@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Project, ProjectFile, Scan, Vulnerability, ApprovalRequest } from '../types';
 import { api } from '../lib/api';
+import { scanCodeWithGemini } from '../lib/geminiScanner';
 
 interface ScanProgress {
   isScanning: boolean;
@@ -146,16 +147,32 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, 1300);
 
     try {
-      const res = await api.scanProject(activeProject.id);
+      let scanResult: Scan | null = null;
+      try {
+        const res = await api.scanProject(activeProject.id);
+        scanResult = res.scan;
+        await refreshDataForActiveProject();
+        await fetchProjects();
+      } catch (backendErr) {
+        // Direct Google AI Studio Gemini Cloud Scanner (for Vercel deployment)
+        console.log('[ProjectContext] Running cloud Google Gemini security scan...');
+        const { scan, vulnerabilities: directVulns } = await scanCodeWithGemini(
+          activeProject.id,
+          activeFiles
+        );
+        scanResult = scan;
+        setVulnerabilities(directVulns);
+        setActiveScans(prev => [scan, ...prev]);
+        setActiveProject(prev => prev ? { ...prev, securityScore: scan.securityScore } : null);
+      }
+
       setScanProgress({ isScanning: true, stage: 'Security Scan Complete!', progressPercent: 100 });
-      await refreshDataForActiveProject();
-      await fetchProjects();
 
       setTimeout(() => {
         setScanProgress({ isScanning: false, stage: '', progressPercent: 0 });
-      }, 1000);
+      }, 800);
 
-      return res.scan;
+      return scanResult;
     } catch (err: any) {
       console.error('[ProjectContext] Scan error:', err);
       setScanProgress({ isScanning: false, stage: '', progressPercent: 0 });
