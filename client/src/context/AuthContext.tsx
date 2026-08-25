@@ -12,6 +12,15 @@ interface AuthContextType {
   logout: () => void;
 }
 
+function getDeterministicUserId(email: string): string {
+  try {
+    const clean = email.toLowerCase().trim().replace(/[^a-zA-Z0-9]/g, '_');
+    return `usr_${clean}`;
+  } catch {
+    return `usr_${Date.now()}`;
+  }
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -69,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
 
-    // 2. Local fallback
+    // 2. Local fallback verification
     async function loadLocalUser() {
       try {
         const res = await api.getMe();
@@ -78,17 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem('vibeguard_user', JSON.stringify(res.user));
         }
       } catch (err) {
-        if (!user) {
-          const defaultUser: UserProfile = {
-            id: 'usr_shyam',
-            email: 'shyam@vibeguard.io',
-            name: 'Shyam Sundar',
-            role: 'Lead Security Engineer',
-            created_at: new Date().toISOString()
-          };
-          setUser(defaultUser);
-          localStorage.setItem('vibeguard_user', JSON.stringify(defaultUser));
-        }
+        // Keep saved user from localStorage
       } finally {
         setLoading(false);
       }
@@ -98,16 +97,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password?: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+
     // 1. Try Supabase Auth first
     if (supabase && password) {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
         if (!error && data.user) {
           const meta = data.user.user_metadata || {};
           const profile: UserProfile = {
             id: data.user.id,
-            email: data.user.email || email,
-            name: meta.full_name || meta.name || email.split('@')[0],
+            email: data.user.email || cleanEmail,
+            name: meta.full_name || meta.name || cleanEmail.split('@')[0],
             role: 'Security Engineer',
             created_at: data.user.created_at || new Date().toISOString()
           };
@@ -122,21 +123,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 2. Try API backend if available
     try {
-      const res = await api.login(email, password);
+      const res = await api.login(cleanEmail, password);
       if (res?.user) {
         setUser(res.user);
         localStorage.setItem('vibeguard_user', JSON.stringify(res.user));
         return;
       }
-    } catch (e) {
-      // Static host fallback
-    }
+    } catch (e) {}
 
-    // 3. Robust client session fallback
+    // 3. Deterministic client session (reconnects with user's saved projects every time)
     const profile: UserProfile = {
-      id: `usr_${Date.now()}`,
-      email: email,
-      name: email.split('@')[0],
+      id: getDeterministicUserId(cleanEmail),
+      email: cleanEmail,
+      name: cleanEmail.split('@')[0],
       role: 'Security Engineer',
       created_at: new Date().toISOString()
     };
@@ -145,18 +144,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signup = async (email: string, name: string, password?: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+
     // 1. Try Supabase Auth first
     if (supabase && password) {
       try {
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: cleanEmail,
           password,
           options: { data: { full_name: name, name } }
         });
         if (!error && data.user) {
           const profile: UserProfile = {
             id: data.user.id,
-            email: data.user.email || email,
+            email: data.user.email || cleanEmail,
             name: name,
             role: 'Security Engineer',
             created_at: data.user.created_at || new Date().toISOString()
@@ -172,21 +173,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 2. Try API backend if available
     try {
-      const res = await api.signup(email, name, password);
+      const res = await api.signup(cleanEmail, name, password);
       if (res?.user) {
         setUser(res.user);
         localStorage.setItem('vibeguard_user', JSON.stringify(res.user));
         return;
       }
-    } catch (e) {
-      // Static host fallback
-    }
+    } catch (e) {}
 
-    // 3. Robust client session fallback
+    // 3. Deterministic client session
     const profile: UserProfile = {
-      id: `usr_${Date.now()}`,
-      email: email,
-      name: name || email.split('@')[0],
+      id: getDeterministicUserId(cleanEmail),
+      email: cleanEmail,
+      name: name || cleanEmail.split('@')[0],
       role: 'Security Engineer',
       created_at: new Date().toISOString()
     };
@@ -206,9 +205,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Fallback if supabase client not connected
     const fallbackUser: UserProfile = {
-      id: `usr_${provider}_` + Date.now(),
+      id: `usr_${provider}_oauth`,
       email: `${provider}.user@vibeguard.io`,
       name: `${provider === 'github' ? 'GitHub' : 'Google'} Developer`,
       role: 'Security Engineer',

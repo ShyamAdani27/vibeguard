@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Project, ProjectFile, Scan, Vulnerability, ApprovalRequest } from '../types';
 import { api } from '../lib/api';
 import { scanCodeWithGemini } from '../lib/geminiScanner';
+import { projectStorage } from '../lib/projectStorage';
+import { useAuth } from './AuthContext';
 
 interface ScanProgress {
   isScanning: boolean;
@@ -36,8 +38,11 @@ interface ProjectContextType {
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  const userId = user?.id || 'usr_guest';
+
   const [projects, setProjects] = useState<Project[]>([]);
-  const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [activeProject, setActiveProjectState] = useState<Project | null>(null);
   const [activeFiles, setActiveFiles] = useState<ProjectFile[]>([]);
   const [activeScans, setActiveScans] = useState<Scan[]>([]);
   const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
@@ -50,13 +55,40 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     progressPercent: 0
   });
 
+  const setActiveProject = (p: Project | null) => {
+    setActiveProjectState(p);
+    if (p) {
+      projectStorage.saveActiveProjectId(userId, p.id);
+    }
+  };
+
   const fetchProjects = async () => {
     try {
-      const res = await api.getProjects();
-      setProjects(res.projects || []);
-      if (!activeProject && res.projects?.length > 0) {
-        const college = res.projects.find(p => p.name === 'College E-Commerce') || res.projects[0];
-        setActiveProject(college);
+      // 1. Load from Persistent Storage (LocalStorage + Supabase)
+      const stored = await projectStorage.loadProjects(userId);
+      
+      // 2. Also try API backend if online
+      let mergedProjects = [...stored];
+      try {
+        const res = await api.getProjects();
+        if (res.projects && res.projects.length > 0) {
+          for (const ap of res.projects) {
+            if (!mergedProjects.some(mp => mp.id === ap.id)) {
+              mergedProjects.push(ap);
+            }
+          }
+        }
+      } catch (e) {
+        // Offline / static host
+      }
+
+      setProjects(mergedProjects);
+
+      // Restore active project
+      const savedActiveId = projectStorage.loadActiveProjectId(userId);
+      const restored = mergedProjects.find(p => p.id === savedActiveId) || mergedProjects[0];
+      if (restored && !activeProject) {
+        setActiveProjectState(restored);
       }
     } catch (err) {
       console.error('[ProjectContext] Failed to fetch projects:', err);
@@ -66,6 +98,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const selectProjectById = async (id: string) => {
+    const found = projects.find(p => p.id === id);
+    if (found) {
+      setActiveProject(found);
+      return;
+    }
     try {
       const res = await api.getProject(id);
       if (res.project) {
@@ -80,26 +117,61 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!activeProject) return;
     try {
       const res = await api.getProjectFiles(activeProject.id);
-      setActiveFiles(res.files || []);
-    } catch (err) {
-      console.error('[ProjectContext] Error refreshing files:', err);
+      if (res.files && res.files.length > 0) {
+        setActiveFiles(res.files);
+        projectStorage.saveFiles(activeProject.id, res.files);
+        return;
+      }
+    } catch (err) {}
+
+    // Persistent storage fallback
+    const localFiles = projectStorage.loadFiles(activeProject.id);
+    if (localFiles.length > 0) {
+      setActiveFiles(localFiles);
     }
   };
 
   const refreshDataForActiveProject = async () => {
     if (!activeProject) return;
+
+    // 1. Immediately hydrate from local persistent storage for instant zero-latency render
+    const storedFiles = projectStorage.loadFiles(activeProject.id);
+    const storedVulns = projectStorage.loadVulns(activeProject.id);
+    const storedScans = projectStorage.loadScans(activeProject.id);
+
+    if (storedFiles.length > 0) setActiveFiles(storedFiles);
+    if (storedVulns.length > 0) setVulnerabilities(storedVulns);
+    if (storedScans.length > 0) setActiveScans(storedScans);
+
+    if (storedFiles.length > 0 && !selectedFile) {
+      setSelectedFile(storedFiles[0]);
+    }
+
+    // 2. Try fetching updated data from API if online
     try {
       const [filesRes, scansRes, vulnsRes] = await Promise.all([
-        api.getProjectFiles(activeProject.id),
-        api.getProjectScans(activeProject.id),
-        api.getVulnerabilities(activeProject.id)
+        api.getProjectFiles(activeProject.id).catch(() => ({ files: [] })),
+        api.getProjectScans(activeProject.id).catch(() => ({ scans: [] })),
+        api.getVulnerabilities(activeProject.id).catch(() => ({ vulnerabilities: [] }))
       ]);
-      const files = filesRes.files || [];
-      setActiveFiles(files);
-      setActiveScans(scansRes.scans || []);
-      setVulnerabilities(vulnsRes.vulnerabilities || []);
 
-      // If no selected file, default to first or target file
+      const files = filesRes.files || [];
+      const scans = scansRes.scans || [];
+      const vulns = vulnsRes.vulnerabilities || [];
+
+      if (files.length > 0) {
+        setActiveFiles(files);
+        projectStorage.saveFiles(activeProject.id, files);
+      }
+      if (scans.length > 0) {
+        setActiveScans(scans);
+        projectStorage.saveScans(activeProject.id, scans);
+      }
+      if (vulns.length > 0) {
+        setVulnerabilities(vulns);
+        projectStorage.saveVulns(activeProject.id, vulns);
+      }
+
       if (!selectedFile && files.length > 0) {
         const target =
           files.find((f: ProjectFile) => f.path.includes('database.js')) ||
@@ -108,13 +180,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setSelectedFile(target);
       }
     } catch (err) {
-      console.error('[ProjectContext] Error fetching project details:', err);
+      console.warn('[ProjectContext] Network sync notice, using persistent local storage:', err);
     }
   };
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (activeProject) {
@@ -140,7 +212,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, 400);
 
     setTimeout(() => {
-      setScanProgress({ isScanning: true, stage: 'Routing to Antigravity AI Engine...', progressPercent: 65 });
+      setScanProgress({ isScanning: true, stage: 'Routing to Antigravity AI Engine (Claude 3.7 / Pro)...', progressPercent: 65 });
     }, 800);
 
     setTimeout(() => {
@@ -155,7 +227,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         await refreshDataForActiveProject();
         await fetchProjects();
       } catch (backendErr) {
-        // Direct Google AI Studio Gemini Cloud Scanner (for Vercel deployment)
+        // Direct Hybrid & Gemini Cloud Scanner
         console.log('[ProjectContext] Running cloud Google Gemini security scan...');
         const { scan, vulnerabilities: directVulns } = await scanCodeWithGemini(
           activeProject.id,
@@ -164,7 +236,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         scanResult = scan;
         setVulnerabilities(directVulns);
         setActiveScans(prev => [scan, ...prev]);
-        setActiveProject(prev => prev ? { ...prev, securityScore: scan.securityScore } : null);
+        setActiveProjectState(prev => prev ? { ...prev, securityScore: scan.securityScore } : null);
+
+        // Save scan and vulns to persistent storage
+        projectStorage.saveVulns(activeProject.id, directVulns);
+        projectStorage.saveScans(activeProject.id, [scan, ...activeScans]);
       }
 
       setScanProgress({ isScanning: true, stage: 'Security Scan Complete!', progressPercent: 100 });
@@ -197,9 +273,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const addImportedProject = (project: Project, files: ProjectFile[], scan?: Scan) => {
-    setProjects(prev => [project, ...prev.filter(p => p.id !== project.id)]);
+    const updatedProjects = [project, ...projects.filter(p => p.id !== project.id)];
+    setProjects(updatedProjects);
     setActiveProject(project);
     setActiveFiles(files);
+    
     if (files.length > 0) {
       setSelectedFile(files[0]);
     }
@@ -207,8 +285,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setActiveScans(prev => [scan, ...prev]);
       if (scan.vulnerabilities) {
         setVulnerabilities(scan.vulnerabilities);
+        projectStorage.saveVulns(project.id, scan.vulnerabilities);
       }
+      projectStorage.saveScans(project.id, [scan]);
     }
+
+    // Persist everything across browser restarts and localhost reboots
+    projectStorage.saveProjects(userId, updatedProjects);
+    projectStorage.saveFiles(project.id, files);
+    projectStorage.saveActiveProjectId(userId, project.id);
   };
 
   return (
