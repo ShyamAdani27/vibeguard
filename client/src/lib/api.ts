@@ -154,6 +154,49 @@ export const api = {
       method: 'POST'
     }),
 
+  // Advanced Deep Scanners
+  scanDependencies: (projectId: string) =>
+    fetchJson<{
+      success: boolean;
+      totalDependencies: number;
+      vulnerableCount: number;
+      criticalCount: number;
+      highCount: number;
+      mediumCount: number;
+      lowCount: number;
+      findings: any[];
+    }>(`/scan/sca/${projectId}`, { method: 'POST' }),
+
+  scanIaC: (projectId: string) =>
+    fetchJson<{
+      success: boolean;
+      filesAudited: number;
+      totalFindings: number;
+      criticalCount: number;
+      highCount: number;
+      mediumCount: number;
+      lowCount: number;
+      postureScore: number;
+      findings: any[];
+    }>(`/scan/iac/${projectId}`, { method: 'POST' }),
+
+  getTaintGraphs: (projectId: string) =>
+    fetchJson<{ success: boolean; graphs: any[] }>(`/scan/taint-graphs/${projectId}`),
+
+  scanPromptSecurity: (prompt: string, tier?: string) =>
+    fetchJson<{
+      success: boolean;
+      prompt: string;
+      safetyScore: number;
+      threatLevel: string;
+      vulnerabilities: any[];
+      mitigatedPrompt: string;
+      analyzerTier: string;
+    }>('/scan/prompt-security', {
+      method: 'POST',
+      body: JSON.stringify({ prompt, tier })
+    }),
+
   // Audit Logs
   getAuditLogs: (projectId?: string) =>
     fetchJson<{ success: boolean; logs: AuditLog[] }>(
@@ -162,5 +205,9 @@ export const api = {
 
   // Reports
   getSecurityReport: (projectId: string) =>
-    fetchJson<{ success: boolean; report: SecurityReport }>(`/reports/${projectId}`)
+    fetchJson<{ success: boolean; report: SecurityReport }>(`/reports/${projectId}`),
+  exportReportPDF: (projectId: string) =>
+    fetchJson<{ success: boolean; message: string; reportUrl?: string }>(`/reports/${projectId}/export-pdf`, {
+      method: 'POST'
+    })
 };

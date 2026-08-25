@@ -11,10 +11,11 @@ import { ApprovalsPage } from './pages/ApprovalsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AIProvidersPage } from './pages/AIProvidersPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
+import { DependencyAuditPage } from './pages/DependencyAuditPage';
+import { IaCContainerAuditPage } from './pages/IaCContainerAuditPage';
 import { AuthPage } from './pages/AuthPage';
 import { CreateProjectModal } from './components/projects/CreateProjectModal';
 import { GitHubImportModal } from './components/projects/GitHubImportModal';
-
 import { ThemeProvider } from './context/ThemeContext';
 
 const AppContent: React.FC = () => {
@@ -34,7 +35,13 @@ const AppContent: React.FC = () => {
       case 'projects':
         return <ProjectsPage setCurrentTab={setCurrentTab} />;
       case 'workspace':
-        return <ProjectWorkspacePage />;
+        return <ProjectWorkspacePage initialView="code" />;
+      case 'taint-graph':
+        return <ProjectWorkspacePage initialView="taint" />;
+      case 'dependency-audit':
+        return <DependencyAuditPage />;
+      case 'iac-audit':
+        return <IaCContainerAuditPage />;
       case 'precode':
         return <PreCodeScannerPage />;
       case 'findings':

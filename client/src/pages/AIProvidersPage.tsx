@@ -68,26 +68,44 @@ export const AIProvidersPage: React.FC = () => {
   };
 
   const getTierBadge = (id: string, model: string) => {
+    if (id.includes('claude-3-7') || model.includes('claude-3-7')) {
+      return {
+        label: '🧠 Tier 1: Claude 3.7 (Thinking & Taint Graph)',
+        color: 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+      };
+    }
+    if (id.includes('claude-3-6') || model.includes('claude-3-6')) {
+      return {
+        label: '🛡️ Tier 2: Claude 3.6 (IaC & AST Auditor)',
+        color: 'bg-purple-500/15 border-purple-500/30 text-purple-300'
+      };
+    }
+    if (id.includes('claude-3-5') || model.includes('claude-3-5')) {
+      return {
+        label: '⚡ Tier 3: Claude 3.5 (Prompt Risk & CVE Engine)',
+        color: 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+      };
+    }
     if (id === 'antigravity-pro' || model.includes('pro')) {
       return {
-        label: '🧠 Pro: Multi-File Taint & Auth Auditor',
-        color: 'bg-purple-500/15 border-purple-500/30 text-purple-300'
+        label: '🔍 Tier 4: Pro (Multi-File Logic Auditor)',
+        color: 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
       };
     }
     if (id === 'antigravity-flash' || model.includes('flash')) {
       return {
-        label: '⚡ Flash: AST & Prompt Risk Engine',
-        color: 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
+        label: '⚡ Tier 5: Flash (High-Speed Scanner)',
+        color: 'bg-blue-500/15 border-blue-500/30 text-blue-300'
       };
     }
     if (id === 'antigravity-flash-lite' || model.includes('flash_lite')) {
       return {
-        label: '🛡️ Flash-Lite: Ultralight Secret Filter',
+        label: '🔒 Tier 6: Flash-Lite (Secret Guard)',
         color: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
       };
     }
     return {
-      label: '🔄 Adaptive Orchestrator',
+      label: '🔄 Adaptive Hybrid Core',
       color: 'bg-slate-700/40 border-slate-600 text-slate-300'
     };
   };

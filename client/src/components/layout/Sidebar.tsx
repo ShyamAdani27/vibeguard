@@ -5,16 +5,14 @@ import {
   ShieldCheck,
   Zap,
   Flame,
-  Wrench,
-  KeyRound,
   FileSpreadsheet,
   Cpu,
   ScrollText,
   Lock,
-  ChevronRight,
-  Radio,
-  Sun,
-  Moon
+  Package,
+  Server,
+  Layers,
+  ChevronRight
 } from 'lucide-react';
 import { useProject } from '../../context/ProjectContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -30,9 +28,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab }) =
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'projects', label: 'Projects', icon: FolderGit2, badge: null },
+    { id: 'projects', label: 'Projects', icon: FolderGit2 },
     { id: 'workspace', label: 'Scanner & Explorer', icon: ShieldCheck, highlight: true },
-    { id: 'precode', label: 'Pre-Code Check', icon: Zap },
+    { id: 'taint-graph', label: 'Interactive Taint Flow', icon: Layers, isNew: true },
+    { id: 'dependency-audit', label: 'Dependency & CVEs', icon: Package, isNew: true },
+    { id: 'iac-audit', label: 'Docker & IaC Auditor', icon: Server, isNew: true },
+    { id: 'precode', label: 'AI Prompt Security Lab', icon: Zap },
     { id: 'findings', label: 'Findings & Analysis', icon: Flame },
     { id: 'reports', label: 'Security Reports', icon: FileSpreadsheet },
     { id: 'providers', label: 'AI Providers Router', icon: Cpu },
@@ -98,26 +99,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab }) =
                 <span className="tracking-wide">{item.label}</span>
               </div>
 
-              <div className="flex items-center gap-2">
-                {isActive && <ChevronRight className="w-3.5 h-3.5 text-cyan-400" />}
-              </div>
+              {item.isNew ? (
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold">
+                  NEW
+                </span>
+              ) : (
+                <ChevronRight
+                  className={`w-3.5 h-3.5 transition-transform ${
+                    isActive ? 'text-cyan-400 translate-x-0.5' : 'text-slate-600 opacity-0 group-hover:opacity-100'
+                  }`}
+                />
+              )}
             </button>
           );
         })}
       </nav>
 
-      {/* AI Router Status Badge at Bottom */}
-      <div className="p-3 border-t border-[#1f293d] dark:border-[#1f293d] border-slate-200 bg-[#0b101c] dark:bg-[#0b101c] bg-slate-50 space-y-2">
-        <div className="flex items-center justify-between p-2 rounded-lg bg-[#111726] dark:bg-[#111726] bg-white border border-[#1f293d] dark:border-[#1f293d] border-slate-200 shadow-sm">
-          <div className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
-            <div>
-              <span className="text-[11px] font-mono font-semibold text-white dark:text-white text-slate-800 block">AI Router Live</span>
-              <span className="text-[10px] text-slate-400 dark:text-slate-400 text-slate-500">Gemini-1 • Failover</span>
-            </div>
-          </div>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+      {/* Footer Info */}
+      <div className="p-4 border-t border-[#1f293d] dark:border-[#1f293d] border-slate-200 bg-[#0a0e1a] dark:bg-[#0a0e1a] bg-slate-50 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[11px] font-mono text-slate-400 dark:text-slate-400 text-slate-600">
+            Antigravity Claude 3.7
+          </span>
         </div>
+        <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20 font-bold">
+          v1.5 PRO
+        </span>
       </div>
     </aside>
   );

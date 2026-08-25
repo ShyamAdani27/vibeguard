@@ -18,7 +18,19 @@ export class AIRouter {
   public initializeProviders() {
     this.providers.clear();
 
-    // 1. Register Antigravity AI Model Tiers (Pro, Flash, Flash-Lite, Inherit)
+    // 1. Register Antigravity Multi-Tier Hierarchy
+    this.providers.set(
+      'antigravity-claude-3-7-sonnet',
+      new AntigravityProvider('antigravity-claude-3-7-sonnet', 'Antigravity Claude 3.7 (Thinking)', 'claude-3-7-sonnet')
+    );
+    this.providers.set(
+      'antigravity-claude-3-6-sonnet',
+      new AntigravityProvider('antigravity-claude-3-6-sonnet', 'Antigravity Claude 3.6 (IaC & AST)', 'claude-3-6-sonnet')
+    );
+    this.providers.set(
+      'antigravity-claude-3-5-sonnet',
+      new AntigravityProvider('antigravity-claude-3-5-sonnet', 'Antigravity Claude 3.5 (Security Logic)', 'claude-3-5-sonnet')
+    );
     this.providers.set(
       'antigravity-pro',
       new AntigravityProvider('antigravity-pro', 'Antigravity AI Pro', 'pro')

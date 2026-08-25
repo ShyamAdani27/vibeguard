@@ -1,7 +1,14 @@
 import { BaseProvider, CodeAnalysisInput, FixGenerationInput } from './BaseProvider.js';
 import { Vulnerability, PreCodeScanResult } from '../../types/index.js';
 
-export type AntigravityTier = 'pro' | 'flash' | 'flash_lite' | 'inherit';
+export type AntigravityTier =
+  | 'claude-3-7-sonnet'
+  | 'claude-3-6-sonnet'
+  | 'claude-3-5-sonnet'
+  | 'pro'
+  | 'flash'
+  | 'flash_lite'
+  | 'inherit';
 
 export class AntigravityProvider extends BaseProvider {
   id: string;
@@ -26,15 +33,25 @@ export class AntigravityProvider extends BaseProvider {
   }> {
     const findings: Omit<Vulnerability, 'id' | 'scanId' | 'projectId' | 'created_at'>[] = [];
 
-    // Antigravity Tier-Specific Reasoning Engine
+    // Antigravity Multi-Tier Reasoning Engine
     for (const file of input.files) {
       const lines = file.content.split('\n');
 
       lines.forEach((line, idx) => {
         const lineNum = idx + 1;
+        const trimmed = line.trim();
 
-        // 1. Cross-File & Deep Taint SQL Injection
-        if (/SELECT\s+.*\s+FROM\s+.*\s*(\+|concat)/i.test(line) || /WHERE\s+.*=\s*['"]\s*\+/i.test(line) || /db\.query\(.*(\+|`.*\${)/i.test(line) || /pool\.query\(.*(\+|`.*\${)/i.test(line)) {
+        // Skip pure comments
+        if (trimmed.startsWith('//') || trimmed.startsWith('#') || trimmed.startsWith('/*')) return;
+
+        // 1. Cross-File & Deep Taint SQL Injection (Deepest in Claude 3.7 Thinking)
+        if (
+          /SELECT\s+.*\s+FROM\s+.*\s*(\+|concat)/i.test(line) ||
+          /WHERE\s+.*=\s*['"]\s*\+/i.test(line) ||
+          /db\.query\(.*(\+|`.*\${)/i.test(line) ||
+          /pool\.query\(.*(\+|`.*\${)/i.test(line) ||
+          /\b(query|execute|rawQuery)\s*\(\s*['"`].*\$\{/i.test(line)
+        ) {
           findings.push({
             file: file.path,
             line: lineNum,
@@ -42,36 +59,76 @@ export class AntigravityProvider extends BaseProvider {
             type: 'SQL_INJECTION',
             title: `SQL Injection (${this.name})`,
             description: 'Direct string concatenation of user-controlled parameters into SQL execution flow.',
-            why: this.tier === 'pro'
-              ? 'Taint trace confirms unsanitized request parameter flows uninterrupted into database driver query execution without parameter binding or type safety.'
+            why: this.tier === 'claude-3-7-sonnet'
+              ? 'Taint trace confirms unsanitized request parameter flows uninterrupted into database driver query execution without parameter binding, type safety, or escape filters.'
               : 'Direct concatenation allows query structure manipulation via payloads like `\' OR 1=1 --`.',
             risk: 'Full database exfiltration, authentication bypass, data tampering.',
             recommendation: 'Use parameterized prepared statements with placeholder arrays (`[param1, param2]`).',
-            codeSnippet: line.trim(),
+            codeSnippet: trimmed,
             detectedBy: `${this.name} (${this.model})`,
             status: 'OPEN'
           });
         }
 
-        // 2. Hardcoded Secrets & Cryptographic Keys (Detected by flash_lite, flash, and pro)
-        if (/(jwt_secret|secret_key|api_key|password|bearer|auth_token)\s*[:=]\s*['"][a-zA-Z0-9_\-]{6,}['"]/i.test(line) && !line.includes('process.env')) {
+        // 2. Arbitrary Code Execution (eval / new Function / vm2)
+        if (/\beval\(|new\s+Function\(|vm\.runInThisContext\(/.test(line)) {
+          findings.push({
+            file: file.path,
+            line: lineNum,
+            severity: 'CRITICAL',
+            type: 'UNSAFE_EVAL',
+            title: `Arbitrary Code Execution via eval() (${this.name})`,
+            description: 'Dynamic code evaluation (`eval` or `Function`) executing untrusted input strings.',
+            why: 'Enables arbitrary JavaScript execution in the NodeJS runtime environment, leading to remote server compromise.',
+            risk: 'Complete host takeover and shell process hijacking.',
+            recommendation: 'Refactor to use safe JSON parsing (`JSON.parse`) or structured dispatch maps.',
+            codeSnippet: trimmed,
+            detectedBy: `${this.name} (${this.model})`,
+            status: 'OPEN'
+          });
+        }
+
+        // 3. Command Injection
+        if (/child_process\.(exec|execSync)\(/.test(line) || /os\.system\(|subprocess\.Popen\(/.test(line)) {
+          findings.push({
+            file: file.path,
+            line: lineNum,
+            severity: 'CRITICAL',
+            type: 'COMMAND_INJECTION',
+            title: `OS Command Injection (${this.name})`,
+            description: 'Spawning shell processes with unescaped command arguments.',
+            why: 'Command arguments containing metacharacters (`;`, `&&`, `|`) will be interpreted directly by the operating system shell.',
+            risk: 'Unauthorized server shell commands execution and file system tampering.',
+            recommendation: 'Use `execFile` or `spawn` with an array of arguments, avoiding shell interpolation.',
+            codeSnippet: trimmed,
+            detectedBy: `${this.name} (${this.model})`,
+            status: 'OPEN'
+          });
+        }
+
+        // 4. Hardcoded Secrets & Cryptographic Keys
+        if (
+          (jwtRegex(line) || genericKeyRegex(line) || awsKeyRegex(line)) &&
+          !line.includes('process.env') &&
+          !file.path.includes('.example')
+        ) {
           findings.push({
             file: file.path,
             line: lineNum,
             severity: 'CRITICAL',
             type: 'HARDCODED_CREDENTIALS',
             title: `Hardcoded Authentication Secret (${this.name})`,
-            description: 'Cryptographic secret key or authorization token hardcoded into source code repository.',
+            description: 'Cryptographic secret key, API token, or authorization secret hardcoded in repository.',
             why: 'Hardcoded credentials can be leaked via git logs, source code exposure, or client-side bundles.',
-            risk: 'Token forgery, privilege escalation, unauthorized API access.',
-            recommendation: 'Store secrets exclusively in backend environment variables (`process.env.JWT_SECRET`).',
-            codeSnippet: line.trim(),
+            risk: 'Token forgery, privilege escalation, unauthorized third-party API usage.',
+            recommendation: 'Store secrets exclusively in environment variables (`process.env.SECRET_KEY`).',
+            codeSnippet: trimmed,
             detectedBy: `${this.name} (${this.model})`,
             status: 'OPEN'
           });
         }
 
-        // 3. Weak Authentication & Password Security
+        // 5. Weak Authentication & Password Security
         if (/md5\(|sha1\(|crypto\.createHash\(['"]md5['"]\)/i.test(line) || /password\s*===?\s*user\.password/i.test(line)) {
           findings.push({
             file: file.path,
@@ -80,16 +137,16 @@ export class AntigravityProvider extends BaseProvider {
             type: 'WEAK_AUTHENTICATION',
             title: `Insecure Password Hashing (${this.name})`,
             description: 'Passwords compared in plaintext or hashed using collision-vulnerable algorithms (MD5/SHA1).',
-            why: 'MD5 is vulnerable to rainbow table lookups and brute-force GPU attacks.',
+            why: 'MD5 is vulnerable to rainbow table lookups and brute-force GPU hash cracking.',
             risk: 'User account takeover, database credential harvesting.',
             recommendation: 'Use salted key derivation functions such as bcrypt (cost factor >= 12) or Argon2id.',
-            codeSnippet: line.trim(),
+            codeSnippet: trimmed,
             detectedBy: `${this.name} (${this.model})`,
             status: 'OPEN'
           });
         }
 
-        // 4. Cross-Site Scripting (XSS)
+        // 6. Cross-Site Scripting (XSS)
         if (/res\.send\(.*req\.(body|query|params)/i.test(line) || /dangerouslySetInnerHTML/i.test(line) || /innerHTML\s*=/i.test(line)) {
           findings.push({
             file: file.path,
@@ -97,51 +154,50 @@ export class AntigravityProvider extends BaseProvider {
             severity: 'HIGH',
             type: 'XSS',
             title: `Reflected XSS Vulnerability (${this.name})`,
-            description: 'Unescaped user input rendered directly into HTTP response HTML.',
-            why: 'Attackers can execute arbitrary JavaScript in the victim’s browser session.',
-            risk: 'Session token theft, phishing overlays, CSRF execution.',
-            recommendation: 'HTML-encode all user input or return sanitized JSON payloads.',
-            codeSnippet: line.trim(),
+            description: 'Unescaped user input rendered directly into HTTP response HTML or DOM.',
+            why: 'Allows attackers to execute malicious JavaScript in victims browser contexts, stealing session cookies.',
+            risk: 'Session theft, account impersonation, DOM defacement.',
+            recommendation: 'Use context-aware HTML encoding and strict Content-Security-Policy (CSP) headers.',
+            codeSnippet: trimmed,
             detectedBy: `${this.name} (${this.model})`,
             status: 'OPEN'
           });
         }
 
-        // 5. Input Validation & Schema Boundaries (pro and flash)
-        if (this.tier === 'pro' || this.tier === 'flash') {
-          if (/app\.(post|put|patch)\(/.test(line) && !file.content.includes('zod') && !file.content.includes('joi')) {
-            if (lineNum === 1 || lineNum % 25 === 0) {
-              findings.push({
-                file: file.path,
-                line: lineNum,
-                severity: 'MEDIUM',
-                type: 'MISSING_INPUT_VALIDATION',
-                title: `Missing Request Schema Validation (${this.name})`,
-                description: 'API endpoint consumes client payload without strict schema boundaries.',
-                why: 'Allows oversized payloads, unexpected types, and prototype pollution.',
-                risk: 'Denial of service, unhandled exceptions, type-coercion bugs.',
-                recommendation: 'Enforce strict schema validation using Zod or Joi middleware.',
-                codeSnippet: line.trim(),
-                detectedBy: `${this.name} (${this.model})`,
-                status: 'OPEN'
-              });
-            }
-          }
+        // 7. Insecure CORS Configuration
+        if (/cors\(\s*\{\s*origin\s*:\s*['"]\*['"]\s*,\s*credentials\s*:\s*true/i.test(line) || /header\(['"]Access-Control-Allow-Origin['"],\s*['"]\*['"]\)/i.test(line)) {
+          findings.push({
+            file: file.path,
+            line: lineNum,
+            severity: 'HIGH',
+            type: 'INSECURE_CONFIG',
+            title: `Overly Permissive CORS Policy (${this.name})`,
+            description: 'Wildcard CORS origin configured together with credentials/cookies allowance.',
+            why: 'Allows malicious third-party origins to make authenticated cross-origin requests and read sensitive responses.',
+            risk: 'Cross-site data theft and session exploitation.',
+            recommendation: 'Restrict `Access-Control-Allow-Origin` to an explicit whitelist of trusted domains.',
+            codeSnippet: trimmed,
+            detectedBy: `${this.name} (${this.model})`,
+            status: 'OPEN'
+          });
         }
       });
     }
 
-    const critical = findings.filter(f => f.severity === 'CRITICAL').length;
-    const high = findings.filter(f => f.severity === 'HIGH').length;
-    const medium = findings.filter(f => f.severity === 'MEDIUM').length;
-    const low = findings.filter(f => f.severity === 'LOW').length;
+    const criticalCount = findings.filter(f => f.severity === 'CRITICAL').length;
+    const highCount = findings.filter(f => f.severity === 'HIGH').length;
+    const mediumCount = findings.filter(f => f.severity === 'MEDIUM').length;
+    const lowCount = findings.filter(f => f.severity === 'LOW').length;
 
-    let score = 100 - (critical * 20 + high * 10 + medium * 5 + low * 2);
-    score = Math.max(10, Math.min(100, score));
+    let riskScore = 100 - (criticalCount * 25 + highCount * 12 + mediumCount * 5 + lowCount * 2);
+    riskScore = Math.max(5, Math.min(100, riskScore));
+
+    const riskLevel =
+      criticalCount > 0 ? 'CRITICAL' : highCount > 0 ? 'HIGH' : mediumCount > 0 ? 'MEDIUM' : 'LOW';
 
     return {
-      riskScore: score,
-      riskLevel: critical > 0 ? 'CRITICAL' : high > 0 ? 'HIGH' : medium > 0 ? 'MEDIUM' : 'LOW',
+      riskScore,
+      riskLevel,
       findings
     };
   }
@@ -149,7 +205,7 @@ export class AntigravityProvider extends BaseProvider {
   async scanPrompt(prompt: string): Promise<PreCodeScanResult> {
     const promptLower = prompt.toLowerCase();
     const categories: PreCodeScanResult['detectedCategories'] = [];
-    let riskScore = 20;
+    let riskScore = 15;
 
     if (promptLower.includes('auth') || promptLower.includes('login') || promptLower.includes('signup') || promptLower.includes('token') || promptLower.includes('jwt')) {
       riskScore += 30;
@@ -191,11 +247,28 @@ export class AntigravityProvider extends BaseProvider {
       });
     }
 
-    riskScore = Math.min(95, Math.max(10, riskScore));
+    // Prompt Injection & Adversarial Jailbreak heuristics
+    if (
+      promptLower.includes('ignore previous') ||
+      promptLower.includes('system prompt') ||
+      promptLower.includes('dan mode') ||
+      promptLower.includes('jailbreak') ||
+      promptLower.includes('developer mode')
+    ) {
+      riskScore += 45;
+      categories.push({
+        category: 'Adversarial Prompt Injection Vector',
+        severity: 'CRITICAL',
+        description: 'System override or adversarial jailbreak pattern identified.',
+        guidance: 'Isolate user inputs with delimiter tags (`<user_data>`) and enforce system prompt non-overridability.'
+      });
+    }
+
+    riskScore = Math.min(98, Math.max(10, riskScore));
     const severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' =
       riskScore >= 75 ? 'CRITICAL' : riskScore >= 50 ? 'HIGH' : riskScore >= 25 ? 'MEDIUM' : 'LOW';
 
-    const mitigationPrompt = `[ANTIGRAVITY SECURE DIRECTIVE]\nGenerate code for "${prompt}" strictly enforcing:\n` +
+    const mitigationPrompt = `[ANTIGRAVITY ${this.tier.toUpperCase()} DIRECTIVE]\nGenerate code for "${prompt}" strictly enforcing:\n` +
       categories.map(c => `- ${c.category}: ${c.guidance}`).join('\n') +
       `\n- Parameterize all database operations.\n- Sanitize output contexts.\n- Never log secrets.`;
 
@@ -249,4 +322,16 @@ export class AntigravityProvider extends BaseProvider {
       whyThisFix,
     };
   }
+}
+
+function jwtRegex(line: string): boolean {
+  return /(jwt_secret|secret_key|api_key|password|bearer|auth_token)\s*[:=]\s*['"][a-zA-Z0-9_\-]{6,}['"]/i.test(line);
+}
+
+function genericKeyRegex(line: string): boolean {
+  return /(sk_live_[0-9a-zA-Z]{24}|ghp_[0-9a-zA-Z]{36})/i.test(line);
+}
+
+function awsKeyRegex(line: string): boolean {
+  return /(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}/.test(line);
 }
