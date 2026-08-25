@@ -13,7 +13,7 @@ import {
   UserProfile
 } from '../types';
 
-const API_BASE = '/api';
+const API_BASE = (import.meta as any).env?.VITE_API_URL || '/api';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
