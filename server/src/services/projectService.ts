@@ -84,7 +84,10 @@ export class ProjectService {
   }
 
   public listProjects(userId?: string): Project[] {
-    const list = Array.from(memoryStore.projects.values());
+    let list = Array.from(memoryStore.projects.values());
+    if (userId) {
+      list = list.filter(p => p.userId === userId);
+    }
     return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 

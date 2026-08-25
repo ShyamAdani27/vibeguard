@@ -8,17 +8,17 @@ const SCANS_PREFIX = 'vibeguard_project_scans_';
 const ACTIVE_PROJECT_PREFIX = 'vibeguard_active_proj_';
 
 export const projectStorage = {
-  // Save Projects to Local Storage & Supabase
+  // Save Projects to Local Storage & Supabase strictly per userId
   saveProjects: async (userId: string, projects: Project[]): Promise<void> => {
+    if (!userId) return;
     try {
       localStorage.setItem(`${PROJECTS_PREFIX}${userId}`, JSON.stringify(projects));
-      localStorage.setItem('vibeguard_latest_projects', JSON.stringify(projects));
     } catch (e) {
       console.warn('[Storage] Failed to save projects locally:', e);
     }
 
     // Sync to Supabase Cloud if available
-    if (supabase && userId && !userId.startsWith('usr_shyam')) {
+    if (supabase && userId && !userId.startsWith('usr_shyam_mock')) {
       try {
         for (const p of projects) {
           await supabase.from('projects').upsert({
@@ -42,11 +42,13 @@ export const projectStorage = {
     }
   },
 
-  // Load Projects from Local Storage & Supabase
+  // Load Projects from Local Storage & Supabase strictly for THIS userId
   loadProjects: async (userId: string): Promise<Project[]> => {
+    if (!userId) return [];
     let localProjects: Project[] = [];
+
     try {
-      const stored = localStorage.getItem(`${PROJECTS_PREFIX}${userId}`) || localStorage.getItem('vibeguard_latest_projects');
+      const stored = localStorage.getItem(`${PROJECTS_PREFIX}${userId}`);
       if (stored) {
         localProjects = JSON.parse(stored);
       }
@@ -54,8 +56,8 @@ export const projectStorage = {
       console.warn('[Storage] Failed to read local projects:', e);
     }
 
-    // Try fetching latest from Supabase Cloud
-    if (supabase && userId && !userId.startsWith('usr_shyam')) {
+    // Try fetching latest strictly for THIS user from Supabase Cloud
+    if (supabase && userId && !userId.startsWith('usr_shyam_mock')) {
       try {
         const { data, error } = await supabase
           .from('projects')
@@ -80,7 +82,7 @@ export const projectStorage = {
             updated_at: d.updated_at
           }));
 
-          // Merge cloud and local
+          // Merge cloud and local strictly for this user
           const merged = [...cloudProjects];
           for (const lp of localProjects) {
             if (!merged.some(cp => cp.id === lp.id)) {
@@ -178,17 +180,18 @@ export const projectStorage = {
     }
   },
 
-  // Active Project ID Persistence
+  // Active Project ID Persistence strictly per userId
   saveActiveProjectId: (userId: string, projectId: string): void => {
+    if (!userId) return;
     try {
       localStorage.setItem(`${ACTIVE_PROJECT_PREFIX}${userId}`, projectId);
-      localStorage.setItem('vibeguard_active_proj_last', projectId);
     } catch {}
   },
 
   loadActiveProjectId: (userId: string): string | null => {
+    if (!userId) return null;
     try {
-      return localStorage.getItem(`${ACTIVE_PROJECT_PREFIX}${userId}`) || localStorage.getItem('vibeguard_active_proj_last');
+      return localStorage.getItem(`${ACTIVE_PROJECT_PREFIX}${userId}`);
     } catch {
       return null;
     }

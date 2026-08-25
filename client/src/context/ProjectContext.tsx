@@ -39,7 +39,7 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const userId = user?.id || 'usr_guest';
+  const userId = user?.id || '';
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProjectState] = useState<Project | null>(null);
@@ -57,22 +57,33 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const setActiveProject = (p: Project | null) => {
     setActiveProjectState(p);
-    if (p) {
+    if (p && userId) {
       projectStorage.saveActiveProjectId(userId, p.id);
     }
   };
 
   const fetchProjects = async () => {
+    if (!userId) {
+      setProjects([]);
+      setActiveProjectState(null);
+      setActiveFiles([]);
+      setVulnerabilities([]);
+      setLoading(false);
+      return;
+    }
+
     try {
-      // 1. Load from Persistent Storage (LocalStorage + Supabase)
+      // 1. Load strictly for THIS user from Persistent Storage (LocalStorage + Supabase)
       const stored = await projectStorage.loadProjects(userId);
       
-      // 2. Also try API backend if online
+      // 2. Also try API backend if online (filtered strictly by userId)
       let mergedProjects = [...stored];
       try {
         const res = await api.getProjects();
         if (res.projects && res.projects.length > 0) {
-          for (const ap of res.projects) {
+          // Strict user check: only include projects owned by this user
+          const userProjects = res.projects.filter((ap: Project) => ap.userId === userId);
+          for (const ap of userProjects) {
             if (!mergedProjects.some(mp => mp.id === ap.id)) {
               mergedProjects.push(ap);
             }
@@ -84,12 +95,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       setProjects(mergedProjects);
 
-      // Restore active project
+      // Restore active project strictly for THIS user
       const savedActiveId = projectStorage.loadActiveProjectId(userId);
-      const restored = mergedProjects.find(p => p.id === savedActiveId) || mergedProjects[0];
-      if (restored && !activeProject) {
-        setActiveProjectState(restored);
-      }
+      const restored = mergedProjects.find(p => p.id === savedActiveId) || (mergedProjects.length > 0 ? mergedProjects[0] : null);
+      setActiveProjectState(restored);
     } catch (err) {
       console.error('[ProjectContext] Failed to fetch projects:', err);
     } finally {
@@ -105,7 +114,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     try {
       const res = await api.getProject(id);
-      if (res.project) {
+      if (res.project && res.project.userId === userId) {
         setActiveProject(res.project);
       }
     } catch (err) {
@@ -132,7 +141,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const refreshDataForActiveProject = async () => {
-    if (!activeProject) return;
+    if (!activeProject) {
+      setActiveFiles([]);
+      setVulnerabilities([]);
+      setActiveScans([]);
+      setSelectedFile(null);
+      setSelectedVuln(null);
+      return;
+    }
 
     // 1. Immediately hydrate from local persistent storage for instant zero-latency render
     const storedFiles = projectStorage.loadFiles(activeProject.id);
@@ -184,7 +200,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Reset and reload strictly when user changes (e.g. login with different account)
   useEffect(() => {
+    setProjects([]);
+    setActiveProjectState(null);
+    setActiveFiles([]);
+    setVulnerabilities([]);
+    setActiveScans([]);
+    setSelectedFile(null);
+    setSelectedVuln(null);
     fetchProjects();
   }, [userId]);
 
@@ -260,11 +284,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const loadSampleProject = async (): Promise<Project> => {
     try {
       const res = await api.loadSampleProject();
-      await fetchProjects();
-      setActiveProject(res.project);
-      setActiveFiles(res.files || []);
-      const vulnsRes = await api.getVulnerabilities(res.project.id);
-      setVulnerabilities(vulnsRes.vulnerabilities || []);
+      if (res.project) {
+        res.project.userId = userId;
+      }
+      addImportedProject(res.project, res.files || []);
       return res.project;
     } catch (err) {
       console.error('Error loading sample project:', err);
@@ -273,6 +296,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const addImportedProject = (project: Project, files: ProjectFile[], scan?: Scan) => {
+    project.userId = userId;
     const updatedProjects = [project, ...projects.filter(p => p.id !== project.id)];
     setProjects(updatedProjects);
     setActiveProject(project);
@@ -290,7 +314,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       projectStorage.saveScans(project.id, [scan]);
     }
 
-    // Persist everything across browser restarts and localhost reboots
+    // Persist strictly under this userId
     projectStorage.saveProjects(userId, updatedProjects);
     projectStorage.saveFiles(project.id, files);
     projectStorage.saveActiveProjectId(userId, project.id);

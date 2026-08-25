@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useProject } from '../../context/ProjectContext';
+import { useAuth } from '../../context/AuthContext';
 import { importGitHubDirect } from '../../lib/githubClientService';
 
 interface GitHubImportModalProps {
@@ -26,6 +27,7 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  const { user } = useAuth();
   const { fetchProjects, setActiveProject, addImportedProject } = useProject();
   const [repoUrl, setRepoUrl] = useState('');
   const [branch, setBranch] = useState('main');
@@ -65,10 +67,15 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
           autoScan
         });
 
+        if (res.project) {
+          res.project.userId = user?.id || 'usr_guest';
+        }
+
         setImportedFileCount(res.fileCount);
         setStep('COMPLETE');
+        const filesRes = await api.getProjectFiles(res.project.id).catch(() => ({ files: [] }));
+        addImportedProject(res.project, filesRes.files || [], res.scan);
         await fetchProjects();
-        setActiveProject(res.project);
       } catch (backendErr: any) {
         // Direct Client GitHub Ingestion (for static Vercel deployment)
         console.log('[GitHub Modal] Running client-side GitHub direct ingestion...');
@@ -76,7 +83,8 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
           repoUrl,
           branch: branch || 'main',
           token: token ? token : undefined,
-          autoScan
+          autoScan,
+          userId: user?.id || 'usr_guest'
         });
 
         setImportedFileCount(directRes.fileCount);

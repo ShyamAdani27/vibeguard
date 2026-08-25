@@ -13,8 +13,9 @@ export async function importGitHubDirect(params: {
   branch?: string;
   token?: string;
   autoScan?: boolean;
+  userId?: string;
 }): Promise<GitHubImportResult> {
-  const { repoUrl, branch = 'main', token, autoScan = true } = params;
+  const { repoUrl, branch = 'main', token, autoScan = true, userId = 'usr_guest' } = params;
 
   // Clean URL / extract owner and repo
   let clean = repoUrl.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '');
@@ -49,7 +50,7 @@ export async function importGitHubDirect(params: {
   const treeData = await treeRes.json();
   const treeItems: any[] = treeData.tree || [];
 
-  // 2. Filter code files (exact match with server extractor)
+  // 2. Filter code files
   const validExtensions = ['.js', '.ts', '.jsx', '.tsx', '.py', '.json', '.sql', '.html', '.css', '.env', '.yaml', '.yml', '.md', '.sh'];
   const ignoredPatterns = ['node_modules/', '.git/', 'dist/', 'build/', '.cache/', '__MACOSX', '.next/'];
 
@@ -61,32 +62,32 @@ export async function importGitHubDirect(params: {
   });
 
   if (candidateFiles.length === 0) {
-    throw new Error(`No scannable code files found in repository "${owner}/${repo}".`);
+    throw new Error(`No eligible source code files found in repository "${owner}/${repo}" on branch "${branch}".`);
   }
 
-  // 3. Fetch ALL candidate files (up to 300 files in fast parallel batches)
-  const filesToFetch = candidateFiles.slice(0, 300);
-  const parsedFiles: ProjectFile[] = [];
+  // 3. Download files in parallel batches
   const projectId = `proj_${Date.now()}`;
+  const parsedFiles: ProjectFile[] = [];
   let totalLines = 0;
 
-  // Batch download in parallel chunks of 10 for high speed without network bottleneck
   const batchSize = 10;
-  for (let i = 0; i < filesToFetch.length; i += batchSize) {
-    const batch = filesToFetch.slice(i, i + batchSize);
+  for (let i = 0; i < candidateFiles.length; i += batchSize) {
+    const batch = candidateFiles.slice(i, i + batchSize);
     const results = await Promise.all(
-      batch.map(async item => {
+      batch.map(async (item): Promise<ProjectFile | null> => {
         try {
           const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`;
           const rawRes = await fetch(rawUrl, {
-            headers: token ? { Authorization: `token ${token}` } : {}
+            headers: token ? { 'Authorization': `token ${token}` } : {}
           });
+
           if (rawRes.ok) {
             const content = await rawRes.text();
+            const ext = item.path.split('.').pop() || 'text';
             const lines = content.split('\n').length;
-            const ext = item.path.split('.').pop() || 'plaintext';
+            totalLines += lines;
             return {
-              id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+              id: `file_${Math.random().toString(36).substring(2, 9)}`,
               projectId,
               path: item.path,
               name: item.path.split('/').pop() || item.path,
@@ -94,7 +95,6 @@ export async function importGitHubDirect(params: {
               size: item.size || content.length,
               isSensitive: item.path.includes('.env') || item.path.includes('credential'),
               language: ext,
-              lines,
               updated_at: new Date().toISOString()
             };
           }
@@ -107,7 +107,6 @@ export async function importGitHubDirect(params: {
 
     for (const res of results) {
       if (res) {
-        totalLines += res.lines;
         parsedFiles.push(res);
       }
     }
@@ -117,10 +116,10 @@ export async function importGitHubDirect(params: {
     throw new Error('Could not download file contents from GitHub. Please check network connection or provide a Personal Access Token.');
   }
 
-  // 4. Create Project
+  // 4. Create Project strictly bound to userId
   const project: Project = {
     id: projectId,
-    userId: 'usr_current',
+    userId,
     name: `${owner}/${repo}`,
     description: `Imported from GitHub: https://github.com/${owner}/${repo}`,
     language: 'JavaScript/TypeScript',

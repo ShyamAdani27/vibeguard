@@ -8,7 +8,8 @@ const upload = multer({ limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB limit
 
 // List projects
 router.get('/', (req, res) => {
-  const projects = projectService.listProjects();
+  const userId = (req.headers['x-user-id'] as string) || (req.query.userId as string);
+  const projects = projectService.listProjects(userId);
   res.json({ success: true, projects });
 });
 
