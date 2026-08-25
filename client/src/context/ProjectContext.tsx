@@ -29,6 +29,7 @@ interface ProjectContextType {
   loadSampleProject: () => Promise<Project>;
   refreshFiles: () => Promise<void>;
   inspectVulnerability: (v: Vulnerability) => void;
+  addImportedProject: (project: Project, files: ProjectFile[], scan?: Scan) => void;
   decideApprovalRequest: (approvalId: string, decision: 'APPROVED' | 'REJECTED') => Promise<void>;
 }
 
@@ -195,6 +196,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const addImportedProject = (project: Project, files: ProjectFile[], scan?: Scan) => {
+    setProjects(prev => [project, ...prev.filter(p => p.id !== project.id)]);
+    setActiveProject(project);
+    setActiveFiles(files);
+    if (files.length > 0) {
+      setSelectedFile(files[0]);
+    }
+    if (scan) {
+      setActiveScans(prev => [scan, ...prev]);
+      if (scan.vulnerabilities) {
+        setVulnerabilities(scan.vulnerabilities);
+      }
+    }
+  };
+
   return (
     <ProjectContext.Provider
       value={{
@@ -216,6 +232,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         loadSampleProject,
         refreshFiles,
         inspectVulnerability,
+        addImportedProject,
         pendingApprovals: [],
         decideApprovalRequest: async () => {}
       }}

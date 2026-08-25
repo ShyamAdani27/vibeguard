@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useProject } from '../../context/ProjectContext';
+import { importGitHubDirect } from '../../lib/githubClientService';
 
 interface GitHubImportModalProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const { fetchProjects, setActiveProject } = useProject();
+  const { fetchProjects, setActiveProject, addImportedProject } = useProject();
   const [repoUrl, setRepoUrl] = useState('');
   const [branch, setBranch] = useState('main');
   const [token, setToken] = useState('');
@@ -56,17 +57,32 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
         setTimeout(() => setStep('SCANNING'), 1100);
       }
 
-      const res = await api.importGitHubRepo({
-        repoUrl,
-        branch: branch || 'main',
-        token: token ? token : undefined,
-        autoScan
-      });
+      try {
+        const res = await api.importGitHubRepo({
+          repoUrl,
+          branch: branch || 'main',
+          token: token ? token : undefined,
+          autoScan
+        });
 
-      setImportedFileCount(res.fileCount);
-      setStep('COMPLETE');
-      await fetchProjects();
-      setActiveProject(res.project);
+        setImportedFileCount(res.fileCount);
+        setStep('COMPLETE');
+        await fetchProjects();
+        setActiveProject(res.project);
+      } catch (backendErr: any) {
+        // Direct Client GitHub Ingestion (for static Vercel deployment)
+        console.log('[GitHub Modal] Running client-side GitHub direct ingestion...');
+        const directRes = await importGitHubDirect({
+          repoUrl,
+          branch: branch || 'main',
+          token: token ? token : undefined,
+          autoScan
+        });
+
+        setImportedFileCount(directRes.fileCount);
+        setStep('COMPLETE');
+        addImportedProject(directRes.project, directRes.files, directRes.scan);
+      }
 
       setTimeout(() => {
         setLoading(false);
