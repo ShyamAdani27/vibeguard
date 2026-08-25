@@ -24,6 +24,12 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     }
   });
 
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await res.text();
+    throw new Error(text.startsWith('<!') ? 'API route not available on static host' : text || `HTTP error ${res.status}`);
+  }
+
   const data = await res.json();
   if (!res.ok || data.success === false) {
     throw new Error(data.error || `HTTP error ${res.status}`);
