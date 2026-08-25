@@ -49,8 +49,8 @@ export async function importGitHubDirect(params: {
   const treeData = await treeRes.json();
   const treeItems: any[] = treeData.tree || [];
 
-  // 2. Filter code files
-  const validExtensions = ['.js', '.ts', '.jsx', '.tsx', '.py', '.json', '.sql', '.html', '.css', '.env', '.yaml', '.yml'];
+  // 2. Filter code files (exact match with server extractor)
+  const validExtensions = ['.js', '.ts', '.jsx', '.tsx', '.py', '.json', '.sql', '.html', '.css', '.env', '.yaml', '.yml', '.md', '.sh'];
   const ignoredPatterns = ['node_modules/', '.git/', 'dist/', 'build/', '.cache/', '__MACOSX', '.next/'];
 
   const candidateFiles = treeItems.filter(item => {
@@ -64,36 +64,52 @@ export async function importGitHubDirect(params: {
     throw new Error(`No scannable code files found in repository "${owner}/${repo}".`);
   }
 
-  // 3. Fetch content for top files (up to 30 files for fast responsive scanning)
-  const filesToFetch = candidateFiles.slice(0, 30);
+  // 3. Fetch ALL candidate files (up to 300 files in fast parallel batches)
+  const filesToFetch = candidateFiles.slice(0, 300);
   const parsedFiles: ProjectFile[] = [];
   const projectId = `proj_${Date.now()}`;
   let totalLines = 0;
 
-  for (const item of filesToFetch) {
-    try {
-      const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`;
-      const rawRes = await fetch(rawUrl, { headers: token ? { Authorization: `token ${token}` } : {} });
-      if (rawRes.ok) {
-        const content = await rawRes.text();
-        const lines = content.split('\n').length;
-        totalLines += lines;
-        const ext = item.path.split('.').pop() || 'plaintext';
+  // Batch download in parallel chunks of 10 for high speed without network bottleneck
+  const batchSize = 10;
+  for (let i = 0; i < filesToFetch.length; i += batchSize) {
+    const batch = filesToFetch.slice(i, i + batchSize);
+    const results = await Promise.all(
+      batch.map(async item => {
+        try {
+          const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`;
+          const rawRes = await fetch(rawUrl, {
+            headers: token ? { Authorization: `token ${token}` } : {}
+          });
+          if (rawRes.ok) {
+            const content = await rawRes.text();
+            const lines = content.split('\n').length;
+            const ext = item.path.split('.').pop() || 'plaintext';
+            return {
+              id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+              projectId,
+              path: item.path,
+              name: item.path.split('/').pop() || item.path,
+              content,
+              size: item.size || content.length,
+              isSensitive: item.path.includes('.env') || item.path.includes('credential'),
+              language: ext,
+              lines,
+              updated_at: new Date().toISOString()
+            };
+          }
+        } catch (e) {
+          console.warn(`[GitHub Import] Notice for file ${item.path}:`, e);
+        }
+        return null;
+      })
+    );
 
-        parsedFiles.push({
-          id: `file_${Date.now()}_${parsedFiles.length}`,
-          projectId,
-          path: item.path,
-          name: item.path.split('/').pop() || item.path,
-          content,
-          size: item.size || content.length,
-          isSensitive: item.path.includes('.env') || item.path.includes('credential'),
-          language: ext,
-          updated_at: new Date().toISOString()
-        });
+    for (const res of results) {
+      if (res) {
+        totalLines += res.lines;
+        parsedFiles.push(res);
       }
-    } catch (e) {
-      console.warn(`[GitHub Import] Could not fetch file ${item.path}:`, e);
     }
   }
 
@@ -117,7 +133,7 @@ export async function importGitHubDirect(params: {
     updated_at: new Date().toISOString()
   };
 
-  // 5. Run Security Scan if requested
+  // 5. Run Security Scan on ALL extracted files
   let scan: Scan | undefined = undefined;
   if (autoScan) {
     const scanRes = await scanCodeWithGemini(projectId, parsedFiles);
