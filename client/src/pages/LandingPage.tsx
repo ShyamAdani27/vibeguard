@@ -25,7 +25,9 @@ import {
   Bot,
   ExternalLink,
   Sun,
-  Moon
+  Moon,
+  Scale,
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -43,8 +45,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [agreedTerms, setAgreedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
   // Interactive Playground Demo State
   const sampleSnippets = {
@@ -92,6 +96,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
       setAuthError('Please enter a valid email address.');
       return;
     }
+    if (authMode === 'SIGNUP' && !agreedTerms) {
+      setAuthError('You must confirm that AI models may make mistakes and accept the Terms.');
+      return;
+    }
+
     setLoading(true);
     setAuthError('');
 
@@ -162,8 +171,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
           <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-600 dark:text-slate-300 font-mono">
             <a href="#features" className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">Capabilities</a>
             <a href="#architecture" className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">AI Architecture</a>
-            <a href="#playground" className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">Live Interactive Scanner</a>
-            <a href="#compliance" className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">Security Standards</a>
+            <a href="#playground" className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">Live Scanner</a>
+            <button
+              onClick={() => setIsTermsModalOpen(true)}
+              className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors flex items-center gap-1"
+            >
+              <Scale className="w-3.5 h-3.5" /> Terms & AI Policy
+            </button>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -374,6 +388,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                     className="w-full bg-slate-50 dark:bg-[#090d18] border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 font-mono"
                   />
                 </div>
+
+                {/* AI Advisory & Terms Tick Mark Checkbox */}
+                {authMode === 'SIGNUP' && (
+                  <label className="flex items-start gap-2 pt-1 text-[11px] font-mono text-slate-600 dark:text-slate-400 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={agreedTerms}
+                      onChange={(e) => setAgreedTerms(e.target.checked)}
+                      className="mt-0.5 w-3.5 h-3.5 rounded text-cyan-500 focus:ring-cyan-400 border-slate-400 cursor-pointer"
+                    />
+                    <span>
+                      I agree to the{' '}
+                      <button
+                        type="button"
+                        onClick={() => setIsTermsModalOpen(true)}
+                        className="text-cyan-600 dark:text-cyan-400 underline font-bold hover:text-cyan-500"
+                      >
+                        Terms & AI Disclaimer
+                      </button>{' '}
+                      and acknowledge that <strong>AI can make mistakes</strong>; all suggested fixes require human verification.
+                    </span>
+                  </label>
+                )}
 
                 <button
                   type="submit"
@@ -638,9 +675,85 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-slate-600 dark:text-slate-400">All Security Engines & Google OSV Operational</span>
           </div>
+
+          <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400">
+            <button
+              onClick={() => setIsTermsModalOpen(true)}
+              className="hover:text-cyan-500 underline font-bold"
+            >
+              Terms of Service & AI Advisory Notice
+            </button>
+          </div>
+
           <p>© 2026 VibeGuard — AI-Powered Vibe Coding Security Platform. Built for developers.</p>
         </div>
       </footer>
+
+      {/* Terms & AI Advisory Modal */}
+      {isTermsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-[#111726] border-2 border-cyan-500/30 rounded-3xl max-w-3xl w-full p-6 sm:p-8 max-h-[85vh] overflow-y-auto shadow-2xl space-y-6 relative transition-colors">
+            <button
+              onClick={() => setIsTermsModalOpen(false)}
+              className="absolute top-6 right-6 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                <Scale className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white font-mono">
+                  Terms of Service & AI Accuracy Disclaimer
+                </h3>
+                <p className="text-xs text-slate-500 font-mono">Mandatory developer advisory</p>
+              </div>
+            </div>
+
+            {/* Amber Alert Box */}
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs sm:text-sm space-y-1.5 font-sans">
+              <p className="font-bold font-mono text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                <Bot className="w-4 h-4 text-amber-500" />
+                AI Models Can Make Mistakes
+              </p>
+              <p>
+                VibeGuard uses artificial intelligence to generate security findings and automated code solutions. <strong>AI models can hallucinate, produce false positives, or recommend imperfect code.</strong> All suggestions and thinking steps are advisory; human developers must review and verify all code before deploying to production.
+              </p>
+            </div>
+
+            <div className="space-y-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-sans">
+              <div>
+                <h4 className="font-bold font-mono text-slate-900 dark:text-white mb-1">1. Zero Code Retention</h4>
+                <p>Source code is scanned in runtime memory and never stored in persistent external databases.</p>
+              </div>
+
+              <div>
+                <h4 className="font-bold font-mono text-slate-900 dark:text-white mb-1">2. Gatekeeper Approval</h4>
+                <p>No code changes or package installations occur without your explicit approval.</p>
+              </div>
+
+              <div>
+                <h4 className="font-bold font-mono text-slate-900 dark:text-white mb-1">3. Developer Responsibility</h4>
+                <p>You assume full responsibility for the testing, execution, and deployment of all code.</p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+              <button
+                onClick={() => {
+                  setAgreedTerms(true);
+                  setIsTermsModalOpen(false);
+                }}
+                className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-bold transition-all shadow"
+              >
+                I Understand & Accept Terms
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

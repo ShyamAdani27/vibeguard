@@ -14,6 +14,7 @@ import { AuditLogsPage } from './pages/AuditLogsPage';
 import { DependencyAuditPage } from './pages/DependencyAuditPage';
 import { IaCContainerAuditPage } from './pages/IaCContainerAuditPage';
 import { LandingPage } from './pages/LandingPage';
+import { TermsAndConditionsPage } from './pages/TermsAndConditionsPage';
 import { CreateProjectModal } from './components/projects/CreateProjectModal';
 import { GitHubImportModal } from './components/projects/GitHubImportModal';
 import { ThemeProvider } from './context/ThemeContext';
@@ -53,6 +54,8 @@ const AppContent: React.FC = () => {
         return <AIProvidersPage />;
       case 'audit':
         return <AuditLogsPage />;
+      case 'terms':
+        return <TermsAndConditionsPage onAccept={() => setCurrentTab('dashboard')} />;
       case 'landing':
         return <LandingPage onEnterApp={() => setCurrentTab('dashboard')} />;
       default:
