@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #0a0d14;
+    --bg-secondary: #111726;
+    --bg-card: #111726;
+    --border-color: #1f293d;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+  }
+
+  html.light {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --border-color: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+  }
+
+  body {
+    @apply bg-[#0a0d14] text-slate-100 font-sans transition-colors duration-200;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  html.light body {
+    @apply bg-[#f8fafc] text-slate-900;
+  }
+}
+
+/* Custom Theme Support for Light & Dark */
+html.light .cyber-card {
+  @apply bg-white/90 border-slate-200 shadow-md text-slate-900;
+}
+
+html.light aside {
+  @apply bg-white border-slate-200 text-slate-800 shadow-sm;
+}
+
+html.light header {
+  @apply bg-white/90 border-slate-200 text-slate-800;
+}
+
+html.light nav button {
+  @apply text-slate-600 hover:text-slate-900 hover:bg-slate-100;
+}
+
+html.light main {
+  @apply bg-[#f8fafc];
+}
+
+/* Custom Cyber Security Styling */
+.cyber-card {
+  @apply bg-[#111726]/80 backdrop-blur-md border border-[#1f293d] rounded-xl shadow-lg transition-all duration-200;
+}
+
+.cyber-card-hover {
+  @apply hover:border-cyan-500/40 hover:shadow-cyan-500/10 hover:shadow-xl;
+}
+
+.cyber-glow-cyan {
+  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.35);
+}
+
+.cyber-glow-rose {
+  box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.35);
+}
+
+.cyber-glow-emerald {
+  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.35);
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d121f;
+}
+
+html.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #232f48;
+  border-radius: 4px;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}
+
+/* Radar Scan Line Animation */
+@keyframes radar-scan {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(1000%);
+    opacity: 0;
+  }
+}
+
+.animate-radar {
+  animation: radar-scan 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Monaco Editor Vulnerability Line Highlighting (Glowing Red) */
+.monaco-vuln-line-critical {
+  background: rgba(244, 63, 94, 0.28) !important;
+  border-left: 5px solid #f43f5e !important;
+  box-shadow: inset 0 0 16px rgba(244, 63, 94, 0.25) !important;
+}
+
+.monaco-vuln-line-high {
+  background: rgba(245, 158, 11, 0.26) !important;
+  border-left: 5px solid #f59e0b !important;
+  box-shadow: inset 0 0 16px rgba(245, 158, 11, 0.22) !important;
+}
+
+.monaco-vuln-line-medium {
+  background: rgba(59, 130, 246, 0.22) !important;
+  border-left: 5px solid #3b82f6 !important;
+}
+
+.monaco-vuln-glyph-critical {
+  background: #f43f5e;
+  border-radius: 50%;
+  transform: scale(0.65);
+  box-shadow: 0 0 10px #f43f5e;
+}
+
+.monaco-vuln-glyph-high {
+  background: #f59e0b;
+  border-radius: 50%;
+  transform: scale(0.65);
+  box-shadow: 0 0 10px #f59e0b;
+}
+
+.monaco-vuln-line-num-critical {
+  color: #ff4965 !important;
+  font-weight: 800 !important;
+  text-shadow: 0 0 6px rgba(244, 63, 94, 0.6);
+}
