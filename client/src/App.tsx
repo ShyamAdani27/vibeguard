@@ -13,7 +13,7 @@ import { AIProvidersPage } from './pages/AIProvidersPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
 import { DependencyAuditPage } from './pages/DependencyAuditPage';
 import { IaCContainerAuditPage } from './pages/IaCContainerAuditPage';
-import { AuthPage } from './pages/AuthPage';
+import { LandingPage } from './pages/LandingPage';
 import { CreateProjectModal } from './components/projects/CreateProjectModal';
 import { GitHubImportModal } from './components/projects/GitHubImportModal';
 import { ThemeProvider } from './context/ThemeContext';
@@ -24,8 +24,9 @@ const AppContent: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
   const [isGitHubOpen, setIsGitHubOpen] = useState<boolean>(false);
 
+  // If user is not authenticated, show the world-class Landing Page with overview & login/signup
   if (!user) {
-    return <AuthPage onSuccess={() => setCurrentTab('dashboard')} />;
+    return <LandingPage onEnterApp={() => setCurrentTab('dashboard')} />;
   }
 
   const renderTabContent = () => {
@@ -52,6 +53,8 @@ const AppContent: React.FC = () => {
         return <AIProvidersPage />;
       case 'audit':
         return <AuditLogsPage />;
+      case 'landing':
+        return <LandingPage onEnterApp={() => setCurrentTab('dashboard')} />;
       default:
         return <DashboardPage setCurrentTab={setCurrentTab} />;
     }
