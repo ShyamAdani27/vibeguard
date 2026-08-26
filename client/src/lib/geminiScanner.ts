@@ -1,19 +1,12 @@
 import { ProjectFile, Vulnerability, Scan } from '../types';
-import { securityRulesStore } from './securityRulesStore';
 
 const GEMINI_API_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
 
-// 1. Static AST & Heuristic Rules Engine (strictly checks enabled rules)
+// 1. Static AST & Heuristic Rules Engine
 function runClientStaticRules(
-  files: ProjectFile[],
-  userId?: string
+  files: ProjectFile[]
 ): Omit<Vulnerability, 'id' | 'scanId' | 'projectId' | 'created_at'>[] {
   const findings: Omit<Vulnerability, 'id' | 'scanId' | 'projectId' | 'created_at'>[] = [];
-  const activeRules = securityRulesStore.getRules(userId);
-
-  const isSqliEnabled = activeRules.find(r => r.id === 'rule-sqli')?.enabled ?? true;
-  const isXssEnabled = activeRules.find(r => r.id === 'rule-xss')?.enabled ?? true;
-  const isCmdEnabled = activeRules.find(r => r.id === 'rule-command-inj')?.enabled ?? true;
 
   for (const file of files) {
     const lines = file.content.split('\n');
@@ -27,7 +20,6 @@ function runClientStaticRules(
 
       // 1. SQL Injection via String Concatenation / Template Literals (Rule SEC-OWASP-01)
       if (
-        isSqliEnabled &&
         ((/(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\s+.*(\+|\$\{)/i.test(line) ||
           /\b(query|execute|rawQuery)\s*\(\s*['"`].*\$\{/i.test(line) ||
           /\b(query|execute)\s*\(\s*['"`].*['"`]\s*\+/i.test(line)) &&
@@ -50,7 +42,7 @@ function runClientStaticRules(
       }
 
       // 2. Arbitrary Code Execution (eval / new Function) (Rule SEC-OWASP-05)
-      if (isCmdEnabled && /\beval\(|new\s+Function\(/.test(line)) {
+      if (/\beval\(|new\s+Function\(/.test(line)) {
         findings.push({
           file: file.path,
           line: lineNum,
@@ -68,10 +60,7 @@ function runClientStaticRules(
       }
 
       // 3. Command Injection (Rule SEC-OWASP-05)
-      if (
-        isCmdEnabled &&
-        (/child_process\.(exec|execSync)\(/.test(line) || /os\.system\(|subprocess\.Popen\(/.test(line))
-      ) {
+      if (/child_process\.(exec|execSync)\(/.test(line) || /os\.system\(|subprocess\.Popen\(/.test(line)) {
         findings.push({
           file: file.path,
           line: lineNum,
@@ -89,7 +78,7 @@ function runClientStaticRules(
       }
 
       // 4. Cross-Site Scripting (XSS) via innerHTML / dangerouslySetInnerHTML (Rule SEC-OWASP-03)
-      if (isXssEnabled && /dangerouslySetInnerHTML|innerHTML\s*=|document\.write\(/i.test(line)) {
+      if (/dangerouslySetInnerHTML|innerHTML\s*=|document\.write\(/i.test(line)) {
         findings.push({
           file: file.path,
           line: lineNum,
@@ -149,13 +138,8 @@ function runClientStaticRules(
 
 // 2. Secret & Credential Detector (Rule SEC-SECRETS-02)
 function detectClientSecrets(
-  files: ProjectFile[],
-  userId?: string
+  files: ProjectFile[]
 ): Omit<Vulnerability, 'id' | 'scanId' | 'projectId' | 'created_at'>[] {
-  const activeRules = securityRulesStore.getRules(userId);
-  const isSecretsEnabled = activeRules.find(r => r.id === 'rule-secrets')?.enabled ?? true;
-  if (!isSecretsEnabled) return [];
-
   const findings: Omit<Vulnerability, 'id' | 'scanId' | 'projectId' | 'created_at'>[] = [];
 
   const secretPatterns = [
@@ -201,15 +185,14 @@ function detectClientSecrets(
 // 3. Combined Hybrid AI & Static Scanner
 export async function scanCodeWithGemini(
   projectId: string,
-  files: ProjectFile[],
-  userId?: string
+  files: ProjectFile[]
 ): Promise<{ scan: Scan; vulnerabilities: Vulnerability[] }> {
   const startTime = Date.now();
   const scannableFiles = files.filter(f => f.content && f.content.trim().length > 0);
 
-  // 1. Run Static Rules + Secret Detection strictly according to user's enabled rules
-  const staticFindings = runClientStaticRules(scannableFiles, userId);
-  const secretFindings = detectClientSecrets(scannableFiles, userId);
+  // 1. Run Static Rules + Secret Detection
+  const staticFindings = runClientStaticRules(scannableFiles);
+  const secretFindings = detectClientSecrets(scannableFiles);
 
   const rawFindings: Omit<Vulnerability, 'id' | 'scanId' | 'projectId' | 'created_at'>[] = [
     ...staticFindings,
@@ -269,24 +252,12 @@ Return STRICT JSON: { "findings": [{ "file": string, "line": number, "severity":
     }
   }
 
-  // 3. Deduplicate Findings by File + Line + Type & Filter by Selected Security Rules
+  // 3. Deduplicate Findings by File + Line + Type
   const seenKeys = new Set<string>();
   const deduplicated: Vulnerability[] = [];
   const scanId = `scan_${Date.now()}`;
-  const activeRules = securityRulesStore.getRules(userId);
-
-  const isRuleEnabledForType = (type: string): boolean => {
-    if (type === 'SQL_INJECTION') return activeRules.find(r => r.id === 'rule-sqli')?.enabled ?? true;
-    if (type === 'HARDCODED_CREDENTIALS' || type === 'SENSITIVE_DATA_EXPOSURE') return activeRules.find(r => r.id === 'rule-secrets')?.enabled ?? true;
-    if (type === 'XSS') return activeRules.find(r => r.id === 'rule-xss')?.enabled ?? true;
-    if (type === 'COMMAND_INJECTION' || type === 'UNSAFE_EVAL') return activeRules.find(r => r.id === 'rule-command-inj')?.enabled ?? true;
-    if (type === 'AI_PROMPT_INJECTION' || type === 'PROMPT_INJECTION') return activeRules.find(r => r.id === 'rule-prompt-inj')?.enabled ?? true;
-    return true;
-  };
 
   for (const raw of rawFindings) {
-    if (!isRuleEnabledForType(raw.type)) continue;
-
     const key = `${raw.file}:${raw.line}:${raw.type}`;
     if (!seenKeys.has(key)) {
       seenKeys.add(key);

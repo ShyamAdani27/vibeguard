@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   ShieldAlert,
   Play,
@@ -12,14 +12,11 @@ import {
   Sun,
   Moon,
   LogOut,
-  Sliders,
   ShieldCheck
 } from 'lucide-react';
 import { useProject } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { SecurityRuleModal } from '../scanner/SecurityRuleModal';
-import { securityRulesStore } from '../../lib/securityRulesStore';
 
 interface NavbarProps {
   onScanClick: () => void;
@@ -37,10 +34,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { activeProject, projects, selectProjectById, scanProgress, loadSampleProject } = useProject();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
-
-  const activeRules = securityRulesStore.getRules(user?.id);
-  const activeCount = activeRules.filter(r => r.enabled).length;
 
   return (
     <header className="h-16 bg-white/95 dark:bg-[#0d1322]/90 backdrop-blur-md border-b border-slate-200 dark:border-[#1f293d] px-6 flex items-center justify-between shrink-0 z-20 transition-colors shadow-sm">
@@ -80,16 +73,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           className="text-xs text-cyan-700 dark:text-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-300 font-bold px-2 py-1 rounded-lg hover:bg-cyan-500/10 transition-colors"
         >
           + New
-        </button>
-
-        {/* Security Rules Quick Selector */}
-        <button
-          onClick={() => setIsRulesModalOpen(true)}
-          className="text-xs text-cyan-800 dark:text-cyan-300 font-bold px-2.5 py-1.5 rounded-xl bg-cyan-100 dark:bg-cyan-500/10 border border-cyan-300 dark:border-cyan-500/30 hover:bg-cyan-200 dark:hover:bg-cyan-500/20 transition-all flex items-center gap-1.5 shadow-sm"
-          title="Select active security rules and compliance modules"
-        >
-          <Sliders className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-          <span>Rules ({activeCount}/{activeRules.length})</span>
         </button>
 
         <button
@@ -162,13 +145,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Rules Selector Modal */}
-      <SecurityRuleModal
-        isOpen={isRulesModalOpen}
-        onClose={() => setIsRulesModalOpen(false)}
-        onNavigateToGuide={onNavigateToGuide}
-      />
     </header>
   );
 };

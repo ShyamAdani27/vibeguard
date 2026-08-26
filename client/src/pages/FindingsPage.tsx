@@ -9,14 +9,11 @@ import {
   ShieldCheck,
   Eye,
   Info,
-  Sliders,
   FolderGit2
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
-import { useAuth } from '../context/AuthContext';
 import { SeverityBadge } from '../components/common/SeverityBadge';
 import { Vulnerability, Severity } from '../types';
-import { securityRulesStore } from '../lib/securityRulesStore';
 
 interface FindingsPageProps {
   setCurrentTab: (tab: string) => void;
@@ -24,11 +21,7 @@ interface FindingsPageProps {
 
 export const FindingsPage: React.FC<FindingsPageProps> = ({ setCurrentTab }) => {
   const { vulnerabilities, activeProject, activeFiles, inspectVulnerability, scanActiveProject, scanProgress } = useProject();
-  const { user } = useAuth();
   const [severityFilter, setSeverityFilter] = useState<string>('ALL');
-
-  const activeRules = securityRulesStore.getRules(user?.id);
-  const enabledRules = activeRules.filter(r => r.enabled);
 
   const filtered = vulnerabilities.filter((v) => {
     if (severityFilter !== 'ALL' && v.severity !== severityFilter) return false;
@@ -42,10 +35,10 @@ export const FindingsPage: React.FC<FindingsPageProps> = ({ setCurrentTab }) => 
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-500/10 text-cyan-800 dark:text-cyan-400 text-xs font-mono font-bold border border-cyan-300 dark:border-cyan-500/20">
-              SECURITY FINDINGS & AUDIT
+              SECURITY AUDIT
             </span>
             <span className="text-xs text-slate-600 dark:text-slate-400 font-mono font-semibold">
-              DIAGNOSTICS & ACTIVE RULES
+              DIAGNOSTICS & REMEDIATION
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white font-mono tracking-tight flex items-center gap-2">
@@ -54,7 +47,7 @@ export const FindingsPage: React.FC<FindingsPageProps> = ({ setCurrentTab }) => 
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 font-medium">
             Active Project: <strong className="text-cyan-700 dark:text-cyan-400 font-bold">{activeProject?.name || 'No Project'}</strong> •{' '}
-            <span className="font-bold text-slate-800 dark:text-slate-200">{enabledRules.length} Active Security Rules Checked</span>
+            {vulnerabilities.length} Total Discovered Threats
           </p>
         </div>
 
@@ -74,29 +67,6 @@ export const FindingsPage: React.FC<FindingsPageProps> = ({ setCurrentTab }) => 
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Active Rules Filter Badge */}
-      <div className="p-3.5 rounded-2xl bg-cyan-50/70 dark:bg-[#0d1322] border border-cyan-200 dark:border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Sliders className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
-          <span className="text-slate-700 dark:text-slate-300 font-bold">Scanning Profile:</span>
-          {enabledRules.map(r => (
-            <span key={r.id} className="px-2 py-0.5 rounded-md bg-white dark:bg-[#111726] border border-cyan-300 dark:border-cyan-500/30 text-cyan-800 dark:text-cyan-300 font-semibold text-[10px]">
-              {r.code} ({r.title.split(' ')[0]})
-            </span>
-          ))}
-          {enabledRules.length === 0 && (
-            <span className="text-rose-600 dark:text-rose-400 font-bold">No Rules Active!</span>
-          )}
-        </div>
-
-        <button
-          onClick={() => setCurrentTab('terms')}
-          className="text-cyan-700 dark:text-cyan-400 hover:underline font-bold text-[11px] shrink-0"
-        >
-          Configure Rules →
-        </button>
       </div>
 
       {/* Findings List or Empty States */}
@@ -163,22 +133,6 @@ export const FindingsPage: React.FC<FindingsPageProps> = ({ setCurrentTab }) => 
                   Please link a GitHub repository or click "Load Demo" to import files for security scanning.
                 </p>
               </>
-            ) : enabledRules.length === 0 ? (
-              <>
-                <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto" />
-                <h4 className="text-base font-bold text-slate-900 dark:text-white font-mono">
-                  All Security Rules Are Disabled
-                </h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto font-medium">
-                  You currently have 0 active rules selected. Open the Security Rules Selector or Terms & Security Guide to enable detection rules.
-                </p>
-                <button
-                  onClick={() => setCurrentTab('terms')}
-                  className="px-4 py-2 rounded-xl bg-cyan-600 text-white text-xs font-mono font-bold hover:bg-cyan-500 transition-colors shadow"
-                >
-                  Enable Security Rules
-                </button>
-              </>
             ) : (
               <>
                 <ShieldCheck className="w-12 h-12 text-emerald-500 mx-auto animate-bounce" />
@@ -186,7 +140,7 @@ export const FindingsPage: React.FC<FindingsPageProps> = ({ setCurrentTab }) => 
                   Clean Codebase — No Vulnerabilities Found!
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto font-medium">
-                  No security vulnerabilities were detected across your {activeFiles.length} project files for the {enabledRules.length} enabled security rules.
+                  No security vulnerabilities were detected across your {activeFiles.length} project files.
                 </p>
                 <div className="pt-2">
                   <button

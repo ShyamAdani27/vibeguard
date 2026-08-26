@@ -255,8 +255,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.log('[ProjectContext] Running cloud Google Gemini security scan...');
         const { scan, vulnerabilities: directVulns } = await scanCodeWithGemini(
           activeProject.id,
-          activeFiles,
-          userId
+          activeFiles
         );
         scanResult = scan;
         setVulnerabilities(directVulns);

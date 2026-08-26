@@ -16,12 +16,11 @@ import {
   Search,
   Code2,
   Flame,
-  Sliders,
   BookOpen
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SecurityRuleStandard } from '../types';
-import { securityRulesStore } from '../lib/securityRulesStore';
+import { DEFAULT_SECURITY_STANDARDS } from '../lib/securityRulesStore';
 import { SeverityBadge } from '../components/common/SeverityBadge';
 
 interface TermsAndConditionsPageProps {
@@ -45,9 +44,6 @@ export const TermsAndConditionsPage: React.FC<TermsAndConditionsPageProps> = ({
   const [isSaved, setIsSaved] = useState(false);
 
   // Security Guide State
-  const [rules, setRules] = useState<SecurityRuleStandard[]>(() =>
-    securityRulesStore.getRules(userId)
-  );
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCodeTab, setActiveCodeTab] = useState<Record<string, 'VULN' | 'SECURE'>>({});
 
@@ -59,10 +55,6 @@ export const TermsAndConditionsPage: React.FC<TermsAndConditionsPageProps> = ({
       setHasAgreedLiability(true);
       setIsSaved(true);
     }
-  }, [userId]);
-
-  useEffect(() => {
-    setRules(securityRulesStore.getRules(userId));
   }, [userId]);
 
   const allChecked = hasAgreedAI && hasAgreedPrivacy && hasAgreedLiability;
@@ -77,19 +69,7 @@ export const TermsAndConditionsPage: React.FC<TermsAndConditionsPageProps> = ({
     }
   };
 
-  const handleToggle = (ruleId: string, currentVal: boolean) => {
-    const updated = securityRulesStore.saveRuleToggle(userId, ruleId, !currentVal);
-    setRules(updated);
-  };
-
-  const handleSetAll = (enableAll: boolean) => {
-    const updated = securityRulesStore.setAllRules(userId, enableAll);
-    setRules(updated);
-  };
-
-  const enabledCount = rules.filter(r => r.enabled).length;
-
-  const filteredRules = rules.filter(r => {
+  const filteredRules = DEFAULT_SECURITY_STANDARDS.filter(r => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
@@ -138,7 +118,7 @@ export const TermsAndConditionsPage: React.FC<TermsAndConditionsPageProps> = ({
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            Security Rules Guide ({enabledCount}/{rules.length})
+            Security Standards Guide
           </button>
         </div>
       </div>
@@ -280,7 +260,7 @@ export const TermsAndConditionsPage: React.FC<TermsAndConditionsPageProps> = ({
         </div>
       )}
 
-      {/* TAB 2: ACTIVE SECURITY RULES & KNOWLEDGE GUIDE */}
+      {/* TAB 2: ACTIVE SECURITY STANDARDS & KNOWLEDGE GUIDE */}
       {activeTab === 'guide' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Guide Header Controls & Search */}
@@ -298,39 +278,22 @@ export const TermsAndConditionsPage: React.FC<TermsAndConditionsPageProps> = ({
 
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
-                {enabledCount} of {rules.length} Active
+                {filteredRules.length} Active Security Standards
               </span>
-              <button
-                onClick={() => handleSetAll(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 text-xs font-mono font-bold hover:bg-emerald-200 transition-colors"
-              >
-                Enable All
-              </button>
-              <button
-                onClick={() => handleSetAll(false)}
-                className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-xs font-mono font-bold hover:bg-slate-200 transition-colors"
-              >
-                Clear All
-              </button>
             </div>
           </div>
 
           {/* Active Rules List */}
           <div className="space-y-6">
             {filteredRules.map(rule => {
-              const isEnabled = rule.enabled;
               const codeTab = activeCodeTab[rule.id] || 'VULN';
 
               return (
                 <div
                   key={rule.id}
-                  className={`p-6 sm:p-7 rounded-3xl border transition-all duration-300 card-3d transform-3d ${
-                    isEnabled
-                      ? 'bg-white dark:bg-[#111726]/95 border-slate-200 dark:border-[#1f293d] shadow-lg'
-                      : 'bg-slate-50/80 dark:bg-[#0b101d]/60 border-slate-200 dark:border-slate-800/80 opacity-75'
-                  }`}
+                  className="p-6 sm:p-7 rounded-3xl border bg-white dark:bg-[#111726]/95 border-slate-200 dark:border-[#1f293d] shadow-lg transition-all duration-300 card-3d transform-3d"
                 >
-                  {/* Card Top Row: Code, Title, Badges & Toggle Switch */}
+                  {/* Card Top Row: Code, Title, Badges */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -345,26 +308,6 @@ export const TermsAndConditionsPage: React.FC<TermsAndConditionsPageProps> = ({
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white font-mono flex items-center gap-2">
                         {rule.title}
                       </h3>
-                    </div>
-
-                    {/* Interactive Toggle Switch */}
-                    <div className="flex items-center gap-3 shrink-0 bg-slate-100 dark:bg-[#0d1322] p-2 rounded-2xl border border-slate-200 dark:border-slate-800">
-                      <span className={`text-xs font-mono font-bold ${isEnabled ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'}`}>
-                        {isEnabled ? 'ACTIVE FOR SCAN' : 'DISABLED'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleToggle(rule.id, isEnabled)}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          isEnabled ? 'bg-cyan-600' : 'bg-slate-300 dark:bg-slate-700'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                            isEnabled ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
                     </div>
                   </div>
 
