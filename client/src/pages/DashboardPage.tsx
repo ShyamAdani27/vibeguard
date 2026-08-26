@@ -54,7 +54,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setCurrentTab }) =
               className="px-4 py-2.5 rounded-xl bg-white dark:bg-[#1a243b] hover:bg-slate-100 dark:hover:bg-[#233150] text-slate-700 dark:text-slate-200 font-mono font-semibold text-xs border border-slate-300 dark:border-[#2b3b5c] transition-all flex items-center gap-1.5 shadow-sm"
             >
               <Layers className="w-3.5 h-3.5 text-cyan-500" />
-              Code & Taint Graph <ArrowUpRight className="w-3.5 h-3.5" />
+              Browse Code & Explorer <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
 
             <button

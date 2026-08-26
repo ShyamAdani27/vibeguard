@@ -9,9 +9,6 @@ import {
   Cpu,
   ScrollText,
   Lock,
-  Package,
-  Server,
-  Layers,
   Scale,
   ChevronRight
 } from 'lucide-react';
@@ -31,9 +28,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab }) =
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'Projects', icon: FolderGit2 },
     { id: 'workspace', label: 'Scanner & Explorer', icon: ShieldCheck, highlight: true },
-    { id: 'taint-graph', label: 'Interactive Taint Flow', icon: Layers, isNew: true },
-    { id: 'dependency-audit', label: 'Dependency & CVEs', icon: Package, isNew: true },
-    { id: 'iac-audit', label: 'Docker & IaC Auditor', icon: Server, isNew: true },
     { id: 'precode', label: 'AI Prompt Security Lab', icon: Zap },
     { id: 'findings', label: 'Findings & Analysis', icon: Flame },
     { id: 'reports', label: 'Security Reports', icon: FileSpreadsheet },
@@ -101,17 +95,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab }) =
                 <span className="tracking-wide">{item.label}</span>
               </div>
 
-              {item.isNew ? (
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 font-bold">
-                  NEW
-                </span>
-              ) : (
-                <ChevronRight
-                  className={`w-3.5 h-3.5 transition-transform ${
-                    isActive ? 'text-cyan-500 dark:text-cyan-400 translate-x-0.5' : 'text-slate-400 dark:text-slate-600 opacity-0 group-hover:opacity-100'
-                  }`}
-                />
-              )}
+              <ChevronRight
+                className={`w-3.5 h-3.5 transition-transform ${
+                  isActive ? 'text-cyan-500 dark:text-cyan-400 translate-x-0.5' : 'text-slate-400 dark:text-slate-600 opacity-0 group-hover:opacity-100'
+                }`}
+              />
             </button>
           );
         })}
