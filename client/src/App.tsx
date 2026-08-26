@@ -14,7 +14,6 @@ import { AuditLogsPage } from './pages/AuditLogsPage';
 import { DependencyAuditPage } from './pages/DependencyAuditPage';
 import { IaCContainerAuditPage } from './pages/IaCContainerAuditPage';
 import { LandingPage } from './pages/LandingPage';
-import { SecurityStandardsPage } from './pages/SecurityStandardsPage';
 import { TermsAndConditionsPage } from './pages/TermsAndConditionsPage';
 import { CreateProjectModal } from './components/projects/CreateProjectModal';
 import { GitHubImportModal } from './components/projects/GitHubImportModal';
@@ -40,7 +39,7 @@ const AppContent: React.FC = () => {
       case 'workspace':
         return <ProjectWorkspacePage initialView="code" />;
       case 'security-rules':
-        return <SecurityStandardsPage />;
+        return <TermsAndConditionsPage onAccept={() => setCurrentTab('dashboard')} initialTab="guide" />;
       case 'taint-graph':
         return <ProjectWorkspacePage initialView="taint" />;
       case 'dependency-audit':
@@ -58,7 +57,7 @@ const AppContent: React.FC = () => {
       case 'audit':
         return <AuditLogsPage />;
       case 'terms':
-        return <TermsAndConditionsPage onAccept={() => setCurrentTab('dashboard')} />;
+        return <TermsAndConditionsPage onAccept={() => setCurrentTab('dashboard')} initialTab="terms" />;
       case 'landing':
         return <LandingPage onEnterApp={() => setCurrentTab('dashboard')} />;
       default:

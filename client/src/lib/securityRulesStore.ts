@@ -9,7 +9,7 @@ export const DEFAULT_SECURITY_STANDARDS: SecurityRuleStandard[] = [
     framework: 'OWASP Top 10 A03:2021 | CWE-89',
     defaultSeverity: 'CRITICAL',
     enabled: true,
-    shortDescription: 'Prevents untrusted user input from modifying or concatenating directly into SQL database queries.',
+    shortDescription: 'Prevents untrusted user input from concatenating directly into SQL database queries.',
     whatIsIt: 'SQL Injection happens when untrusted user data (like form inputs, URL query params, or JSON bodies) is directly concatenated into database query strings instead of using parameterized queries or ORM bindings.',
     whyCheckIt: 'Attackers can bypass authentication (e.g. `\' OR 1=1 --`), extract entire database tables containing passwords and credit cards, or drop and modify operational data.',
     realWorldImpact: 'Over 65% of massive enterprise database breaches originate from unescaped raw SQL queries written during rapid prototyping.',
@@ -44,7 +44,7 @@ app.post('/login', async (req, res) => {
     shortDescription: 'Detects hardcoded AWS, Stripe, GitHub, database connection strings, and private RSA keys.',
     whatIsIt: 'Scans source code for plaintext secret strings, API keys, private certificates, and authentication tokens that developers accidentally embed inside application files.',
     whyCheckIt: 'Public and private repositories are continuously crawled by malicious bots within seconds of a commit. Exposed keys grant immediate unrestricted access to your AWS cloud infrastructure, billing accounts, and private customer databases.',
-    realWorldImpact: 'Exposed AWS and Stripe keys routinely lead to ransomware, \$50k+ rogue crypto-mining bills, and data theft.',
+    realWorldImpact: 'Exposed AWS and Stripe keys routinely lead to ransomware, $50k+ rogue crypto-mining bills, and data theft.',
     vulnerableSnippet: `// ❌ VULNERABLE: Hardcoded secrets in source code
 const AWS_ACCESS_KEY = "AKIA_DUMMY_EXPOSED_KEY";
 const STRIPE_SECRET = "sk_dummy_stripe_token_sample";
@@ -162,107 +162,6 @@ app.post('/api/ping', (req, res) => {
 });`,
     remediationAdvice: 'Avoid invoking OS shells. Use `execFile` with argument arrays, or native language libraries rather than shell utilities.',
     tags: ['RCE', 'OS Command', 'Backend', 'Shell']
-  },
-  {
-    id: 'rule-cve-sca',
-    code: 'SEC-SUPPLY-06',
-    title: 'Vulnerable Dependencies & Supply-Chain CVEs',
-    category: 'SUPPLY_CHAIN',
-    framework: 'Google OSV | NVD | NIST CVSS',
-    defaultSeverity: 'HIGH',
-    enabled: true,
-    shortDescription: 'Scans package.json, requirements.txt, and go.mod against Google OSV for known public CVEs.',
-    whatIsIt: 'Software Composition Analysis (SCA) automatically checks third-party packages in your project against known vulnerabilities published in the National Vulnerability Database.',
-    whyCheckIt: 'Over 80% of modern application code is third-party open-source. Using outdated packages with known CVEs gives attackers pre-packaged exploit scripts against your application.',
-    realWorldImpact: 'High-profile attacks like Log4j, Equifax breach (Apache Struts), and prototype pollution exploits.',
-    vulnerableSnippet: `// ❌ VULNERABLE: package.json with known CVEs
-{
-  "dependencies": {
-    "jsonwebtoken": "8.5.1", // CVE-2022-23529 (Arbitrary Code Execution)
-    "sqlite3": "5.0.0",      // CVE-2022-38600 (Denial of Service)
-    "lodash": "4.17.15"      // CVE-2020-8203 (Prototype Pollution)
-  }
-}`,
-    secureSnippet: `// ✅ SECURE: Upgraded to patched versions
-{
-  "dependencies": {
-    "jsonwebtoken": "^9.0.0", // Patched
-    "sqlite3": "^5.1.4",      // Patched
-    "lodash": "^4.17.21"      // Patched
-  }
-}`,
-    remediationAdvice: 'Regularly run dependency audits (`npm audit`, `pip-audit`) and upgrade packages to their latest patched releases.',
-    tags: ['Dependencies', 'NPM', 'PyPI', 'Google OSV', 'CVE']
-  },
-  {
-    id: 'rule-docker-iac',
-    code: 'SEC-IAC-07',
-    title: 'Docker & Infrastructure as Code (IaC) Auditor',
-    category: 'CONTAINER_IAC',
-    framework: 'CIS Docker 4.1 | CIS Benchmarks',
-    defaultSeverity: 'HIGH',
-    enabled: true,
-    shortDescription: 'Audits Dockerfiles and Kubernetes configs for root execution and dangerous exposed ports.',
-    whatIsIt: 'Analyzes container configurations (Dockerfile, docker-compose, GitHub Actions) to identify misconfigurations like running processes as the root user (UID 0) and exposing internal databases directly to the internet.',
-    whyCheckIt: 'If an application running as root in a container is exploited, the attacker has immediate root privileges inside the container, facilitating container escape and host takeover.',
-    realWorldImpact: 'Privilege escalation, container breakout, and unauthorized access to cloud host systems.',
-    vulnerableSnippet: `// ❌ VULNERABLE: Dockerfile running as Root with exposed DB port
-FROM node:latest
-WORKDIR /app
-COPY . .
-RUN npm install
-# Missing: USER directive (defaults to Root UID 0)
-EXPOSE 5432
-CMD ["npm", "start"]`,
-    secureSnippet: `// ✅ SECURE: Non-root user & minimal alpine base
-FROM node:20-alpine
-WORKDIR /app
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-COPY --chown=appuser:appgroup . .
-RUN npm ci --only=production
-USER appuser
-EXPOSE 3000
-CMD ["node", "server.js"]`,
-    remediationAdvice: 'Always create and switch to a non-root `USER` in Dockerfiles, use minimal base images (Alpine), and never expose database ports publicly.',
-    tags: ['Docker', 'DevOps', 'CIS Benchmark', 'IaC']
-  },
-  {
-    id: 'rule-taint-flow',
-    code: 'SEC-TAINT-08',
-    title: 'AST Taint Flow & Source-to-Sink Tracking',
-    category: 'DATA_FLOW',
-    framework: 'CWE-20 | AST Data Flow',
-    defaultSeverity: 'CRITICAL',
-    enabled: true,
-    shortDescription: 'Traces data flow paths from HTTP API inputs through helper functions into execution sinks.',
-    whatIsIt: 'Abstract Syntax Tree (AST) Taint Analysis tracks the lifecycle of unvalidated user input (Source) as it passes through variables, helpers, and middleware until it reaches an execution point (Sink).',
-    whyCheckIt: 'Catches complex, multi-file vulnerabilities that simple regex keyword scanners completely miss because the dangerous input is passed through multiple functions before execution.',
-    realWorldImpact: 'Catches hidden architectural vulnerabilities in large microservices and full-stack codebases.',
-    vulnerableSnippet: `// ❌ VULNERABLE: Untrusted parameter flows through helper into query
-async function handleUserLookup(input) {
-  return await db.rawQuery("SELECT * FROM profiles WHERE id = " + input); // Sink
-}
-
-app.get('/api/user/:id', async (req, res) => {
-  const userId = req.params.id; // Source
-  const profile = await handleUserLookup(userId); // Propagation
-  res.json(profile);
-});`,
-    secureSnippet: `// ✅ SECURE: Sanitization & Type Coercion along the flow path
-async function handleUserLookup(safeId: number) {
-  return await db.query("SELECT * FROM profiles WHERE id = $1", [safeId]);
-}
-
-app.get('/api/user/:id', async (req, res) => {
-  const userId = parseInt(req.params.id, 10);
-  if (isNaN(userId)) {
-    return res.status(400).json({ error: 'Invalid numeric ID' });
-  }
-  const profile = await handleUserLookup(userId);
-  res.json(profile);
-});`,
-    remediationAdvice: 'Implement input validation boundaries at the API entry point (using Zod, Joi, or TypeScript type guards).',
-    tags: ['AST', 'Taint Graph', 'Data Flow', 'Architecture']
   }
 ];
 

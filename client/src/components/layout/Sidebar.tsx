@@ -29,13 +29,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab }) =
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'Projects', icon: FolderGit2 },
     { id: 'workspace', label: 'Scanner & Explorer', icon: ShieldCheck, highlight: true },
-    { id: 'security-rules', label: 'Security Rules & Guide', icon: Shield, isNew: true },
     { id: 'precode', label: 'AI Prompt Security Lab', icon: Zap },
     { id: 'findings', label: 'Findings & Analysis', icon: Flame },
     { id: 'reports', label: 'Security Reports', icon: FileSpreadsheet },
     { id: 'providers', label: 'AI Providers Router', icon: Cpu },
     { id: 'audit', label: 'Audit Logs', icon: ScrollText },
-    { id: 'terms', label: 'Terms & AI Policy', icon: Scale },
+    { id: 'terms', label: 'Terms & Security Guide', icon: Scale },
   ];
 
   return (

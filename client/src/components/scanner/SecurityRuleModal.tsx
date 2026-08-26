@@ -54,37 +54,38 @@ export const SecurityRuleModal: React.FC<SecurityRuleModalProps> = ({
   const enabledCount = rules.filter(r => r.enabled).length;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-[#111726] border-2 border-cyan-500/30 rounded-3xl max-w-2xl w-full p-6 sm:p-7 max-h-[85vh] overflow-y-auto shadow-2xl space-y-5 relative card-3d transform-3d transition-colors">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      <div className="bg-white dark:bg-[#111726] border-2 border-cyan-500/30 rounded-3xl max-w-xl w-full p-5 sm:p-6 max-h-[90vh] flex flex-col shadow-2xl relative card-3d transform-3d transition-colors my-auto">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+          title="Close modal"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-4 shrink-0 pr-8">
           <div className="p-2.5 rounded-2xl bg-cyan-100 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-300 dark:border-cyan-500/20 shadow-sm">
-            <Sliders className="w-6 h-6" />
+            <Sliders className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white font-mono flex items-center gap-2">
-              Select Active Security Rules
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-mono">
+              Active Security Rules
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-              {enabledCount} of {rules.length} security checks enabled for active project scans
+              {enabledCount} of {rules.length} security checks enabled for scans
             </p>
           </div>
         </div>
 
         {/* Quick controls */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-[#0d1322] border border-slate-200 dark:border-slate-800 text-xs font-mono">
-          <span className="font-bold text-slate-700 dark:text-slate-300">
-            Scanning Profile: <strong className="text-cyan-700 dark:text-cyan-400">{enabledCount === rules.length ? 'Full Protection' : 'Custom Rules'}</strong>
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-[#0d1322] border border-slate-200 dark:border-slate-800 text-xs font-mono mb-3 shrink-0">
+          <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px] sm:text-xs">
+            Profile: <strong className="text-cyan-700 dark:text-cyan-400">{enabledCount === rules.length ? 'Full Defense' : 'Custom Rules'}</strong>
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => handleSetAll(true)}
               className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 text-[11px] font-bold hover:bg-emerald-200 transition-colors"
@@ -101,20 +102,20 @@ export const SecurityRuleModal: React.FC<SecurityRuleModalProps> = ({
         </div>
 
         {/* Rules Checklist */}
-        <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+        <div className="space-y-2 overflow-y-auto flex-1 pr-1 min-h-0">
           {rules.map(rule => (
             <div
               key={rule.id}
               onClick={() => handleToggle(rule.id, rule.enabled)}
-              className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+              className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 rule.enabled
                   ? 'bg-cyan-50/50 dark:bg-[#0d1322] border-cyan-500/40 shadow-sm'
                   : 'bg-slate-50 dark:bg-[#090d18] border-slate-200 dark:border-slate-800 opacity-60'
               }`}
             >
               <div className="space-y-0.5 truncate flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                     {rule.code}
                   </span>
                   <span className="text-xs font-bold text-slate-900 dark:text-white font-mono truncate">
@@ -126,7 +127,7 @@ export const SecurityRuleModal: React.FC<SecurityRuleModalProps> = ({
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-2.5 shrink-0">
                 <SeverityBadge severity={rule.defaultSeverity} size="sm" />
                 <input
                   type="checkbox"
@@ -140,7 +141,7 @@ export const SecurityRuleModal: React.FC<SecurityRuleModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div className="pt-3.5 mt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
           {onNavigateToGuide && (
             <button
               onClick={() => {
@@ -149,15 +150,15 @@ export const SecurityRuleModal: React.FC<SecurityRuleModalProps> = ({
               }}
               className="text-xs font-mono font-bold text-cyan-700 dark:text-cyan-400 hover:underline flex items-center gap-1.5"
             >
-              <BookOpen className="w-4 h-4" /> Open Full Security Guide & Code Diffs
+              <BookOpen className="w-4 h-4" /> Open Full Policy & Guide
             </button>
           )}
 
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-bold transition-all shadow ml-auto"
+            className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-bold transition-all shadow ml-auto"
           >
-            Apply & Save ({enabledCount} Active)
+            Apply ({enabledCount} Active)
           </button>
         </div>
       </div>
