@@ -109,35 +109,35 @@ export const FileTree: React.FC<FileTreeProps> = ({
           <button
             onClick={() => toggleFolder(node.path)}
             style={{ paddingLeft: `${depth * 14 + 8}px` }}
-            className="w-full flex items-center justify-between py-1.5 px-2 rounded text-xs font-medium text-slate-300 dark:text-slate-300 text-slate-700 hover:text-white dark:hover:text-white hover:text-slate-900 hover:bg-[#141d30] dark:hover:bg-[#141d30] hover:bg-slate-200 transition-colors group text-left"
+            className="w-full flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200/80 dark:hover:bg-[#141d30] transition-colors group text-left"
           >
             <div className="flex items-center gap-1.5 truncate">
               {isOpen ? (
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
               ) : (
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
               )}
               {isOpen ? (
-                <FolderOpen className="w-4 h-4 text-cyan-400 shrink-0" />
+                <FolderOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
               ) : (
-                <Folder className="w-4 h-4 text-cyan-400 shrink-0" />
+                <Folder className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
               )}
               <span className="font-mono text-[12px] truncate">{node.name}</span>
             </div>
 
-            {/* Folder Error Badge (Shows recursive threat count on folder!) */}
+            {/* Folder Error Badge */}
             {folderVulns.length > 0 && (
               <span
                 className={`text-[10px] font-mono font-extrabold px-1.5 py-0.2 rounded-full shrink-0 flex items-center gap-1 shadow-sm ${
                   hasCritical
-                    ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40 shadow-rose-500/10'
+                    ? 'bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-500/25 dark:text-rose-300 dark:border-rose-500/40 shadow-rose-500/10'
                     : hasHigh
-                    ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
-                    : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                    ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-500/25 dark:text-amber-300 dark:border-amber-500/40'
+                    : 'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30'
                 }`}
                 title={`${folderVulns.length} vulnerabilities inside ${node.name}`}
               >
-                <Flame className="w-3 h-3 text-rose-400" />
+                <Flame className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                 <span>{folderVulns.length}</span>
               </span>
             )}
@@ -162,19 +162,19 @@ export const FileTree: React.FC<FileTreeProps> = ({
         key={node.path}
         onClick={() => node.file && onSelectFile(node.file)}
         style={{ paddingLeft: `${depth * 14 + 18}px` }}
-        className={`w-full flex items-center justify-between py-1.5 px-2 rounded text-xs font-medium transition-all text-left ${
+        className={`w-full flex items-center justify-between py-1.5 px-2 rounded-lg text-xs transition-all text-left ${
           isSelected
-            ? 'bg-cyan-500/20 text-cyan-200 dark:text-cyan-200 text-cyan-800 border-l-2 border-cyan-400 font-semibold'
-            : 'text-slate-400 dark:text-slate-400 text-slate-600 hover:text-slate-200 dark:hover:text-slate-200 hover:text-slate-900 hover:bg-[#131b2c] dark:hover:bg-[#131b2c] hover:bg-slate-200'
+            ? 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-900 dark:text-cyan-200 border-l-4 border-cyan-600 dark:border-cyan-400 font-bold shadow-sm'
+            : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200/80 dark:hover:bg-[#131b2c] font-medium'
         }`}
       >
         <div className="flex items-center gap-2 truncate">
           {node.file?.isSensitive ? (
-            <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
           ) : (
             <FileCode
               className={`w-3.5 h-3.5 shrink-0 ${
-                fileVulns.length > 0 ? 'text-rose-400' : isSelected ? 'text-cyan-400' : 'text-slate-500'
+                fileVulns.length > 0 ? 'text-rose-600 dark:text-rose-400' : isSelected ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 dark:text-slate-500'
               }`}
             />
           )}
@@ -186,14 +186,14 @@ export const FileTree: React.FC<FileTreeProps> = ({
           <span
             className={`text-[9px] font-mono font-extrabold px-1.5 py-0.2 rounded-full shrink-0 flex items-center gap-0.5 shadow-sm ${
               hasCritical
-                ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40 shadow-rose-500/10'
+                ? 'bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-500/25 dark:text-rose-300 dark:border-rose-500/40 shadow-rose-500/10'
                 : hasHigh
-                ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
-                : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-500/25 dark:text-amber-300 dark:border-amber-500/40'
+                : 'bg-yellow-100 text-yellow-900 border border-yellow-300 dark:bg-yellow-500/20 dark:text-yellow-300 dark:border-yellow-500/30'
             }`}
             title={`${fileVulns.length} vulnerabilities in this file`}
           >
-            <Flame className="w-2.5 h-2.5" />
+            <Flame className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400" />
             <span>{fileVulns.length}</span>
           </span>
         )}
@@ -202,19 +202,21 @@ export const FileTree: React.FC<FileTreeProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#0b101c] dark:bg-[#0b101c] bg-slate-50 border-r border-[#1f293d] dark:border-[#1f293d] border-slate-200 w-64 shrink-0 select-none transition-colors">
+    <div className="h-full flex flex-col bg-white dark:bg-[#0b101c] border-r border-slate-200 dark:border-[#1f293d] w-64 shrink-0 select-none transition-colors">
       {/* Header */}
-      <div className="p-3 border-b border-[#1f293d] dark:border-[#1f293d] border-slate-200 flex items-center justify-between">
-        <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 text-slate-600">
+      <div className="p-3.5 border-b border-slate-200 dark:border-[#1f293d] flex items-center justify-between bg-slate-50 dark:bg-[#0d1322]">
+        <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-300">
           Project Files ({files.length})
         </span>
-        <span className="text-[10px] text-cyan-400 font-mono font-bold">AST Tree</span>
+        <span className="text-[10px] text-cyan-700 dark:text-cyan-400 font-mono font-extrabold bg-cyan-100 dark:bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-300 dark:border-cyan-500/20">
+          AST Tree
+        </span>
       </div>
 
       {/* Tree Content */}
       <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
         {files.length === 0 ? (
-          <div className="p-4 text-center text-xs text-slate-500 font-mono">
+          <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400 font-mono">
             No files in project. Upload ZIP or link GitHub.
           </div>
         ) : (
@@ -223,8 +225,8 @@ export const FileTree: React.FC<FileTreeProps> = ({
       </div>
 
       {/* Sensitive File Notice */}
-      <div className="p-2.5 border-t border-[#1f293d] dark:border-[#1f293d] border-slate-200 bg-[#090d17] dark:bg-[#090d17] bg-slate-100 text-[10px] text-slate-400 dark:text-slate-400 text-slate-600 font-mono flex items-center gap-1.5">
-        <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+      <div className="p-2.5 border-t border-slate-200 dark:border-[#1f293d] bg-slate-50 dark:bg-[#090d17] text-[10px] text-slate-700 dark:text-slate-400 font-mono flex items-center gap-1.5 font-medium">
+        <Lock className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
         <span>.env & Secrets auto-masked</span>
       </div>
     </div>

@@ -18,59 +18,154 @@
     --bg-card: #ffffff;
     --border-color: #e2e8f0;
     --text-primary: #0f172a;
-    --text-secondary: #64748b;
+    --text-secondary: #334155;
   }
 
   body {
-    @apply bg-[#0a0d14] text-slate-100 font-sans transition-colors duration-200;
+    @apply bg-[#0a0d14] text-slate-100 font-sans transition-colors duration-300;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
   html.light body {
     @apply bg-[#f8fafc] text-slate-900;
   }
+
+  /* Universal Light Theme High-Contrast Text Fixes */
+  html.light h1,
+  html.light h2,
+  html.light h3,
+  html.light h4,
+  html.light h5,
+  html.light h6 {
+    color: #0f172a !important;
+  }
+
+  html.light p {
+    color: #334155;
+  }
+
+  html.light label {
+    color: #1e293b !important;
+  }
+
+  html.light input,
+  html.light textarea,
+  html.light select {
+    color: #0f172a !important;
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  html.light input::placeholder,
+  html.light textarea::placeholder {
+    color: #94a3b8 !important;
+  }
 }
 
-/* Custom Theme Support for Light & Dark */
-html.light .cyber-card {
-  @apply bg-white/90 border-slate-200 shadow-md text-slate-900;
+/* 3D Perspective & Spatial Layering Utilities */
+.perspective-1000 {
+  perspective: 1000px;
 }
 
-html.light aside {
-  @apply bg-white border-slate-200 text-slate-800 shadow-sm;
+.perspective-2000 {
+  perspective: 2000px;
 }
 
-html.light header {
-  @apply bg-white/90 border-slate-200 text-slate-800;
+.transform-3d {
+  transform-style: preserve-3d;
 }
 
-html.light nav button {
-  @apply text-slate-600 hover:text-slate-900 hover:bg-slate-100;
+.card-3d {
+  transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
+  transition: transform 0.35s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.35s ease, border-color 0.35s ease;
 }
 
-html.light main {
-  @apply bg-[#f8fafc];
+.card-3d:hover {
+  transform: perspective(1000px) translateY(-4px) rotateX(1.5deg) scale(1.01);
 }
 
-/* Custom Cyber Security Styling */
-.cyber-card {
-  @apply bg-[#111726]/80 backdrop-blur-md border border-[#1f293d] rounded-xl shadow-lg transition-all duration-200;
-}
-
-.cyber-card-hover {
-  @apply hover:border-cyan-500/40 hover:shadow-cyan-500/10 hover:shadow-xl;
-}
-
+/* 3D Glowing Cyber Shadows */
 .cyber-glow-cyan {
-  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.35);
+  box-shadow: 0 10px 30px -10px rgba(6, 182, 212, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+.cyber-glow-purple {
+  box-shadow: 0 10px 30px -10px rgba(168, 85, 247, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
 .cyber-glow-rose {
-  box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.35);
+  box-shadow: 0 10px 30px -10px rgba(244, 63, 94, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
 .cyber-glow-emerald {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 30px -10px rgba(16, 185, 129, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Float Animation */
+@keyframes float-3d {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.5deg);
+  }
+}
+
+.animate-float {
+  animation: float-3d 5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.animate-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Shimmer Border Gradient */
+@keyframes shimmer-move {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.shimmer-border {
+  background: linear-gradient(90deg, #06b6d4, #8b5cf6, #3b82f6, #06b6d4);
+  background-size: 300% 300%;
+  animation: shimmer-move 4s ease infinite;
+}
+
+/* Radar Scan Line Animation */
+@keyframes radar-scan {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(1000%);
+    opacity: 0;
+  }
+}
+
+.animate-radar {
+  animation: radar-scan 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 /* Custom Sleek Scrollbar */
@@ -97,29 +192,14 @@ html.light ::-webkit-scrollbar-thumb {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b82f6;
+  background: #06b6d4;
 }
 
-/* Radar Scan Line Animation */
-@keyframes radar-scan {
-  0% {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-  50% {
-    opacity: 0.8;
-  }
-  100% {
-    transform: translateY(1000%);
-    opacity: 0;
-  }
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #0284c7;
 }
 
-.animate-radar {
-  animation: radar-scan 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-/* Monaco Editor Vulnerability Line Highlighting (Glowing Red) */
+/* Monaco Editor Line Highlighting */
 .monaco-vuln-line-critical {
   background: rgba(244, 63, 94, 0.28) !important;
   border-left: 5px solid #f43f5e !important;
