@@ -12,12 +12,12 @@ interface AuthContextType {
   logout: () => void;
 }
 
-function getDeterministicUserId(email: string): string {
+export function getDeterministicUserId(email: string): string {
   try {
     const clean = email.toLowerCase().trim().replace(/[^a-zA-Z0-9]/g, '_');
     return `usr_${clean}`;
   } catch {
-    return `usr_${Date.now()}`;
+    return 'usr_guest';
   }
 }
 
@@ -40,10 +40,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           const meta = session.user.user_metadata || {};
+          const userEmail = session.user.email || 'developer@vibeguard.io';
           const profile: UserProfile = {
-            id: session.user.id,
-            email: session.user.email || 'developer@vibeguard.io',
-            name: meta.full_name || meta.name || meta.user_name || session.user.email?.split('@')[0] || 'Security Developer',
+            id: getDeterministicUserId(userEmail),
+            email: userEmail,
+            name: meta.full_name || meta.name || meta.user_name || userEmail.split('@')[0],
             role: 'Security Engineer',
             created_at: session.user.created_at || new Date().toISOString()
           };
@@ -52,16 +53,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setLoading(false);
           return;
         }
-      }).catch(() => {});
+        setLoading(false);
+      }).catch(() => {
+        setLoading(false);
+      });
 
       // Listen for OAuth callbacks / login events
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.user) {
           const meta = session.user.user_metadata || {};
+          const userEmail = session.user.email || 'developer@vibeguard.io';
           const profile: UserProfile = {
-            id: session.user.id,
-            email: session.user.email || 'developer@vibeguard.io',
-            name: meta.full_name || meta.name || meta.user_name || session.user.email?.split('@')[0] || 'Security Developer',
+            id: getDeterministicUserId(userEmail),
+            email: userEmail,
+            name: meta.full_name || meta.name || meta.user_name || userEmail.split('@')[0],
             role: 'Security Engineer',
             created_at: session.user.created_at || new Date().toISOString()
           };
@@ -76,28 +81,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return () => {
         subscription.unsubscribe();
       };
+    } else {
+      setLoading(false);
     }
-
-    // 2. Local fallback verification
-    async function loadLocalUser() {
-      try {
-        const res = await api.getMe();
-        if (res.user) {
-          setUser(res.user);
-          localStorage.setItem('vibeguard_user', JSON.stringify(res.user));
-        }
-      } catch (err) {
-        // Keep saved user from localStorage
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadLocalUser();
   }, []);
 
   const login = async (email: string, password?: string) => {
     const cleanEmail = email.trim().toLowerCase();
+    const deterministicId = getDeterministicUserId(cleanEmail);
 
     // 1. Try Supabase Auth first
     if (supabase && password) {
@@ -106,8 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!error && data.user) {
           const meta = data.user.user_metadata || {};
           const profile: UserProfile = {
-            id: data.user.id,
-            email: data.user.email || cleanEmail,
+            id: deterministicId,
+            email: cleanEmail,
             name: meta.full_name || meta.name || cleanEmail.split('@')[0],
             role: 'Security Engineer',
             created_at: data.user.created_at || new Date().toISOString()
@@ -125,15 +116,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await api.login(cleanEmail, password);
       if (res?.user) {
-        setUser(res.user);
-        localStorage.setItem('vibeguard_user', JSON.stringify(res.user));
+        const profile: UserProfile = {
+          ...res.user,
+          id: deterministicId,
+          email: cleanEmail
+        };
+        setUser(profile);
+        localStorage.setItem('vibeguard_user', JSON.stringify(profile));
         return;
       }
     } catch (e) {}
 
     // 3. Deterministic client session (reconnects with user's saved projects every time)
     const profile: UserProfile = {
-      id: getDeterministicUserId(cleanEmail),
+      id: deterministicId,
       email: cleanEmail,
       name: cleanEmail.split('@')[0],
       role: 'Security Engineer',
@@ -145,6 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, name: string, password?: string) => {
     const cleanEmail = email.trim().toLowerCase();
+    const deterministicId = getDeterministicUserId(cleanEmail);
 
     // 1. Try Supabase Auth first
     if (supabase && password) {
@@ -156,8 +153,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (!error && data.user) {
           const profile: UserProfile = {
-            id: data.user.id,
-            email: data.user.email || cleanEmail,
+            id: deterministicId,
+            email: cleanEmail,
             name: name,
             role: 'Security Engineer',
             created_at: data.user.created_at || new Date().toISOString()
@@ -175,15 +172,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await api.signup(cleanEmail, name, password);
       if (res?.user) {
-        setUser(res.user);
-        localStorage.setItem('vibeguard_user', JSON.stringify(res.user));
+        const profile: UserProfile = {
+          ...res.user,
+          id: deterministicId,
+          email: cleanEmail,
+          name: name || cleanEmail.split('@')[0]
+        };
+        setUser(profile);
+        localStorage.setItem('vibeguard_user', JSON.stringify(profile));
         return;
       }
     } catch (e) {}
 
     // 3. Deterministic client session
     const profile: UserProfile = {
-      id: getDeterministicUserId(cleanEmail),
+      id: deterministicId,
       email: cleanEmail,
       name: name || cleanEmail.split('@')[0],
       role: 'Security Engineer',

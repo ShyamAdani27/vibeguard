@@ -1,11 +1,20 @@
 import { Router } from 'express';
 import { memoryStore, supabase } from '../supabase/client.js';
-import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
+function getDeterministicUserId(email: string): string {
+  const clean = (email || 'guest').toLowerCase().trim().replace(/[^a-zA-Z0-9]/g, '_');
+  return `usr_${clean}`;
+}
+
 // Get current authenticated user / profile
 router.get('/me', async (req, res) => {
+  const userId = req.headers['x-user-id'] as string;
+  if (userId && memoryStore.users.has(userId)) {
+    return res.json({ success: true, user: memoryStore.users.get(userId) });
+  }
+
   const users = Array.from(memoryStore.users.values());
   const user = users[0] || {
     id: 'usr_shyam',
@@ -21,16 +30,18 @@ router.get('/me', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const deterministicId = getDeterministicUserId(cleanEmail);
 
   if (supabase) {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
       if (!error && data.user) {
         const meta = data.user.user_metadata || {};
         const profile = {
-          id: data.user.id,
-          email: data.user.email || email,
-          name: meta.name || meta.full_name || email.split('@')[0],
+          id: deterministicId,
+          email: cleanEmail,
+          name: meta.name || meta.full_name || cleanEmail.split('@')[0],
           role: 'Security Engineer',
           created_at: data.user.created_at || new Date().toISOString()
         };
@@ -43,14 +54,14 @@ router.post('/login', async (req, res) => {
   }
 
   // App / Database Account Match
-  const existingUser = Array.from(memoryStore.users.values()).find(
-    u => u.email?.toLowerCase() === email?.toLowerCase()
+  const existingUser = memoryStore.users.get(deterministicId) || Array.from(memoryStore.users.values()).find(
+    u => u.email?.toLowerCase() === cleanEmail
   );
 
   const user = existingUser || {
-    id: 'usr_' + uuidv4().slice(0, 8),
-    email: email || 'shyam@vibeguard.io',
-    name: email ? email.split('@')[0] : 'Shyam Sundar',
+    id: deterministicId,
+    email: cleanEmail || 'shyam@vibeguard.io',
+    name: cleanEmail ? cleanEmail.split('@')[0] : 'Shyam Sundar',
     role: 'Security Engineer',
     created_at: new Date().toISOString()
   };
@@ -77,19 +88,21 @@ router.post('/login', async (req, res) => {
 // Signup
 router.post('/signup', async (req, res) => {
   const { email, password, name } = req.body;
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const deterministicId = getDeterministicUserId(cleanEmail);
 
   if (supabase) {
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
         options: { data: { name, full_name: name } }
       });
       if (!error && data.user) {
         const profile = {
-          id: data.user.id,
-          email: data.user.email || email,
-          name: name || email.split('@')[0],
+          id: deterministicId,
+          email: cleanEmail,
+          name: name || cleanEmail.split('@')[0],
           role: 'Security Engineer',
           created_at: data.user.created_at || new Date().toISOString()
         };
@@ -101,23 +114,22 @@ router.post('/signup', async (req, res) => {
     }
   }
 
-  // App User Registration
   const user = {
-    id: uuidv4(),
-    email,
-    name: name || email.split('@')[0],
+    id: deterministicId,
+    email: cleanEmail || 'shyam@vibeguard.io',
+    name: name || (cleanEmail ? cleanEmail.split('@')[0] : 'Shyam Sundar'),
     role: 'Security Engineer',
     created_at: new Date().toISOString()
   };
 
   memoryStore.users.set(user.id, user);
 
-  // Sync profile to Supabase database table
+  // Sync to Supabase table
   if (supabase) {
     (async () => {
       try {
         await supabase.from('profiles').upsert({
-          id: user.id,
+          id: user.id.startsWith('usr_') ? undefined : user.id,
           email: user.email,
           name: user.name,
           role: user.role
@@ -126,7 +138,8 @@ router.post('/signup', async (req, res) => {
     })();
   }
 
-  res.json({ success: true, user, token: 'vg_session_token_' + Date.now() });
+  res.status(201).json({ success: true, user, token: 'vg_session_token_' + Date.now() });
 });
 
+export const authRoutes = router;
 export default router;

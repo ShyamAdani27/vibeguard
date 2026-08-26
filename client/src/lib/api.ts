@@ -52,7 +52,11 @@ export const api = {
     }),
 
   // Projects
-  getProjects: () => fetchJson<{ success: boolean; projects: Project[] }>('/projects'),
+  getProjects: (userId?: string) =>
+    fetchJson<{ success: boolean; projects: Project[] }>(
+      userId ? `/projects?userId=${encodeURIComponent(userId)}` : '/projects',
+      { headers: userId ? { 'x-user-id': userId } : {} }
+    ),
   getProject: (id: string) => fetchJson<{ success: boolean; project: Project }>(`/projects/${id}`),
   createProject: (name: string, description: string, language: string) =>
     fetchJson<{ success: boolean; project: Project }>('/projects', {
