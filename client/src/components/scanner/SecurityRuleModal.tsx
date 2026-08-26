@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   ShieldCheck,
@@ -53,9 +54,12 @@ export const SecurityRuleModal: React.FC<SecurityRuleModalProps> = ({
 
   const enabledCount = rules.filter(r => r.enabled).length;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-white dark:bg-[#111726] border-2 border-cyan-500/30 rounded-3xl max-w-xl w-full p-5 sm:p-6 max-h-[90vh] flex flex-col shadow-2xl relative card-3d transform-3d transition-colors my-auto">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      {/* Backdrop Click Dismiss */}
+      <div className="fixed inset-0" onClick={onClose} />
+
+      <div className="bg-white dark:bg-[#111726] border-2 border-cyan-500/40 rounded-3xl max-w-xl w-full p-5 sm:p-7 max-h-[88vh] flex flex-col shadow-2xl relative z-10 my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -156,7 +160,7 @@ export const SecurityRuleModal: React.FC<SecurityRuleModalProps> = ({
 
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-bold transition-all shadow ml-auto"
+            className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-bold transition-all shadow ml-auto"
           >
             Apply ({enabledCount} Active)
           </button>
@@ -164,4 +168,6 @@ export const SecurityRuleModal: React.FC<SecurityRuleModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
