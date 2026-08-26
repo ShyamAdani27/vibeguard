@@ -31,6 +31,7 @@ export const Layout: React.FC<LayoutProps> = ({
           onScanClick={() => scanActiveProject()}
           onOpenProjectModal={onOpenProjectModal}
           onOpenGitHubModal={onOpenGitHubModal}
+          onNavigateToGuide={() => setCurrentTab('security-rules')}
         />
 
         {/* Global Scan Banner when active */}

@@ -228,3 +228,21 @@ export interface MCPTool {
   connectedAt: string;
   capabilities: string[];
 }
+
+export interface SecurityRuleStandard {
+  id: string;
+  code: string;
+  title: string;
+  category: 'OWASP' | 'SECRETS' | 'AI_PROMPT' | 'SUPPLY_CHAIN' | 'CONTAINER_IAC' | 'DATA_FLOW';
+  framework: string; // e.g. "OWASP Top 10 A03:2021", "CWE-89", "CIS 4.1"
+  defaultSeverity: Severity;
+  enabled: boolean;
+  shortDescription: string;
+  whatIsIt: string;
+  whyCheckIt: string;
+  realWorldImpact: string;
+  vulnerableSnippet: string;
+  secureSnippet: string;
+  remediationAdvice: string;
+  tags: string[];
+}

@@ -1,4 +1,5 @@
 import { ProjectFile, Vulnerability, Scan } from '../types';
+import { securityRulesStore } from './securityRulesStore';
 
 const GEMINI_API_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
 
@@ -181,7 +182,8 @@ function detectClientSecrets(files: ProjectFile[]): Omit<Vulnerability, 'id' | '
 // 3. Combined Hybrid AI & Static Scanner
 export async function scanCodeWithGemini(
   projectId: string,
-  files: ProjectFile[]
+  files: ProjectFile[],
+  userId?: string
 ): Promise<{ scan: Scan; vulnerabilities: Vulnerability[] }> {
   const startTime = Date.now();
   const scannableFiles = files.filter(f => f.content && f.content.trim().length > 0);
@@ -248,12 +250,23 @@ Return STRICT JSON: { "findings": [{ "file": string, "line": number, "severity":
     }
   }
 
-  // 3. Deduplicate Findings by File + Line + Type
+  // 3. Deduplicate Findings by File + Line + Type & Filter by Selected Security Rules
   const seenKeys = new Set<string>();
   const deduplicated: Vulnerability[] = [];
   const scanId = `scan_${Date.now()}`;
+  const activeRules = securityRulesStore.getRules(userId);
+
+  const isRuleEnabledForType = (type: string): boolean => {
+    if (type === 'SQL_INJECTION') return activeRules.find(r => r.id === 'rule-sqli')?.enabled ?? true;
+    if (type === 'HARDCODED_CREDENTIALS' || type === 'SENSITIVE_DATA_EXPOSURE') return activeRules.find(r => r.id === 'rule-secrets')?.enabled ?? true;
+    if (type === 'XSS') return activeRules.find(r => r.id === 'rule-xss')?.enabled ?? true;
+    if (type === 'COMMAND_INJECTION' || type === 'UNSAFE_EVAL') return activeRules.find(r => r.id === 'rule-command-inj')?.enabled ?? true;
+    return true;
+  };
 
   for (const raw of rawFindings) {
+    if (!isRuleEnabledForType(raw.type)) continue;
+
     const key = `${raw.file}:${raw.line}:${raw.type}`;
     if (!seenKeys.has(key)) {
       seenKeys.add(key);

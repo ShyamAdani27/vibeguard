@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ShieldAlert,
   Play,
@@ -11,26 +11,36 @@ import {
   Github,
   Sun,
   Moon,
-  LogOut
+  LogOut,
+  Sliders,
+  ShieldCheck
 } from 'lucide-react';
 import { useProject } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { SecurityRuleModal } from '../scanner/SecurityRuleModal';
+import { securityRulesStore } from '../../lib/securityRulesStore';
 
 interface NavbarProps {
   onScanClick: () => void;
   onOpenProjectModal: () => void;
   onOpenGitHubModal: () => void;
+  onNavigateToGuide?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   onScanClick,
   onOpenProjectModal,
-  onOpenGitHubModal
+  onOpenGitHubModal,
+  onNavigateToGuide
 }) => {
   const { activeProject, projects, selectProjectById, scanProgress, loadSampleProject } = useProject();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
+
+  const activeRules = securityRulesStore.getRules(user?.id);
+  const activeCount = activeRules.filter(r => r.enabled).length;
 
   return (
     <header className="h-16 bg-white/95 dark:bg-[#0d1322]/90 backdrop-blur-md border-b border-slate-200 dark:border-[#1f293d] px-6 flex items-center justify-between shrink-0 z-20 transition-colors shadow-sm">
@@ -72,9 +82,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           + New
         </button>
 
+        {/* Security Rules Quick Selector */}
+        <button
+          onClick={() => setIsRulesModalOpen(true)}
+          className="text-xs text-cyan-800 dark:text-cyan-300 font-bold px-2.5 py-1.5 rounded-xl bg-cyan-100 dark:bg-cyan-500/10 border border-cyan-300 dark:border-cyan-500/30 hover:bg-cyan-200 dark:hover:bg-cyan-500/20 transition-all flex items-center gap-1.5 shadow-sm"
+          title="Select active security rules and compliance modules"
+        >
+          <Sliders className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+          <span>Rules ({activeCount}/{activeRules.length})</span>
+        </button>
+
         <button
           onClick={() => loadSampleProject()}
-          className="text-xs text-amber-800 dark:text-amber-300 hover:text-amber-900 font-bold px-2.5 py-1 rounded-xl bg-amber-100 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/20 hover:bg-amber-200 dark:hover:bg-amber-500/20 transition-all flex items-center gap-1.5 shadow-sm"
+          className="text-xs text-amber-800 dark:text-amber-300 hover:text-amber-900 font-bold px-2.5 py-1 rounded-xl bg-amber-100 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/20 hover:bg-amber-200 dark:hover:bg-amber-500/20 transition-all flex items-center gap-1.5 shadow-sm hidden lg:flex"
           title="Instantly loads College E-Commerce demo project"
         >
           <Sparkles className="w-3 h-3" />
@@ -142,6 +162,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Rules Selector Modal */}
+      <SecurityRuleModal
+        isOpen={isRulesModalOpen}
+        onClose={() => setIsRulesModalOpen(false)}
+        onNavigateToGuide={onNavigateToGuide}
+      />
     </header>
   );
 };

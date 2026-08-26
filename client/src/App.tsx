@@ -14,6 +14,7 @@ import { AuditLogsPage } from './pages/AuditLogsPage';
 import { DependencyAuditPage } from './pages/DependencyAuditPage';
 import { IaCContainerAuditPage } from './pages/IaCContainerAuditPage';
 import { LandingPage } from './pages/LandingPage';
+import { SecurityStandardsPage } from './pages/SecurityStandardsPage';
 import { TermsAndConditionsPage } from './pages/TermsAndConditionsPage';
 import { CreateProjectModal } from './components/projects/CreateProjectModal';
 import { GitHubImportModal } from './components/projects/GitHubImportModal';
@@ -38,6 +39,8 @@ const AppContent: React.FC = () => {
         return <ProjectsPage setCurrentTab={setCurrentTab} />;
       case 'workspace':
         return <ProjectWorkspacePage initialView="code" />;
+      case 'security-rules':
+        return <SecurityStandardsPage />;
       case 'taint-graph':
         return <ProjectWorkspacePage initialView="taint" />;
       case 'dependency-audit':
